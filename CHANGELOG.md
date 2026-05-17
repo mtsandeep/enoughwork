@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-17
+
 ### Added
 - Version number displayed in settings page
 - `.gitattributes` for consistent line endings across platforms
