@@ -327,3 +327,8 @@ pub fn get_autostart(app_handle: tauri::AppHandle) -> bool {
 pub fn is_dev() -> bool {
     cfg!(debug_assertions)
 }
+
+#[tauri::command]
+pub fn get_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}

@@ -109,6 +109,7 @@ pub fn run() {
             commands::toggle_autostart,
             commands::get_autostart,
             commands::is_dev,
+            commands::get_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

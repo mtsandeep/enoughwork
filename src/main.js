@@ -289,6 +289,8 @@ const overlaySubtitleInput = $("#setting-overlay-subtitle");
 const debugBar = $(".debug-bar");
 
 let settingsLoaded = false;
+let autostartChanged = false;
+let settingsSnapshot = null;
 
 async function loadSettings() {
   const settings = await invoke("get_settings");
@@ -297,27 +299,68 @@ async function loadSettings() {
   overlaySubtitleInput.value = settings.overlay_subtitle;
   const autostart = await invoke("get_autostart");
   autostartToggle.checked = autostart;
+  autostartChanged = false;
   debugBarToggle.checked = !debugBar.hasAttribute("hidden");
   settingsLoaded = true;
+  // Snapshot for dirty check
+  settingsSnapshot = {
+    overlayTitle: overlayTitleInput.value,
+    overlaySubtitle: overlaySubtitleInput.value,
+    resetTime: resetTimeInput.value,
+  };
+  // Version
+  const version = await invoke("get_version");
+  $("#settings-version").textContent = `v${version}`;
 }
 
 gearBtn.addEventListener("click", async () => {
   settingsPage.hidden = false;
-  if (!settingsLoaded) await loadSettings();
+  if (!settingsLoaded) {
+    await loadSettings();
+  } else {
+    // Always re-fetch autostart from OS since it can change externally
+    const autostart = await invoke("get_autostart");
+    autostartToggle.checked = autostart;
+    autostartChanged = false;
+  }
 });
 
-backBtn.addEventListener("click", () => {
-  settingsPage.hidden = true;
-  // Save on back
-  invoke("save_settings", {
+function applyPendingSettings() {
+  if (!settingsLoaded) return;
+  // Only save if text settings actually changed
+  const current = {
     overlayTitle: overlayTitleInput.value || "Enough Work!",
     overlaySubtitle: overlaySubtitleInput.value || "You've done enough for today. Time to step away.",
     resetTime: resetTimeInput.value || "00:00",
-  });
+  };
+  if (settingsSnapshot && (
+    current.overlayTitle !== settingsSnapshot.overlayTitle ||
+    current.overlaySubtitle !== settingsSnapshot.overlaySubtitle ||
+    current.resetTime !== settingsSnapshot.resetTime
+  )) {
+    invoke("save_settings", current);
+    settingsSnapshot = { ...current };
+  }
+  // Apply autostart if changed
+  if (autostartChanged) {
+    invoke("toggle_autostart", { enable: autostartToggle.checked });
+    autostartChanged = false;
+  }
+}
+
+backBtn.addEventListener("click", () => {
+  settingsPage.hidden = true;
+  applyPendingSettings();
 });
 
-autostartToggle.addEventListener("change", async () => {
-  await invoke("toggle_autostart", { enable: autostartToggle.checked });
+autostartToggle.addEventListener("change", () => {
+  autostartChanged = true;
+});
+
+// Apply pending settings when window hides to tray
+const mainWindow = window.__TAURI__.window.getCurrentWindow();
+mainWindow.onCloseRequested(() => {
+  applyPendingSettings();
 });
 
 debugBarToggle.addEventListener("change", () => {

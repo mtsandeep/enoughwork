@@ -4,6 +4,17 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Version number displayed in settings page
+- `.gitattributes` for consistent line endings across platforms
+
+### Changed
+- Auto-start on boot now applies on settings close instead of on every toggle
+- Settings only write to disk when values actually changed
+- Auto-start state re-checks OS on every settings open (detects external changes)
+
+## [0.1.1] - 2026-05-17
+
 ## [0.1.1] - 2026-05-17
 
 ### Fixed
