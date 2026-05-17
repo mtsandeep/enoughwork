@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-17
+
 ### Fixed
 - Disk I/O no longer blocks IPC commands during state saves
 - Store operations handle errors gracefully instead of panicking
