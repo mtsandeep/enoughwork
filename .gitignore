@@ -1,0 +1,6 @@
+node_modules/
+src-tauri/target/
+*.log
+enoughwork-store.json
+.DS_Store
+Thumbs.db

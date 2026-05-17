@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EnoughWork</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <button class="settings-gear" id="settings-gear" title="Settings">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+
+  <div class="main-container" id="main-content">
+    <div class="timer-section">
+      <div class="elapsed-time" id="elapsed">0h 00m 00s</div>
+      <div class="limit-line">
+        <span class="limit-label">of</span>
+        <span class="limit-text" id="limit-text">4h 00m 00s</span>
+        <span class="limit-label">limit</span>
+      </div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress" style="width: 0%"></div>
+    </div>
+
+    <div class="snooze-bar" id="snooze-bar" hidden>
+      <div class="snooze-progress-track">
+        <div class="snooze-progress-fill" id="snooze-progress" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <div class="status-text" id="status">Active</div>
+
+    <div class="controls">
+      <div class="limit-setting" id="limit-setting">
+        <button class="limit-btn" id="limit-down">−</button>
+        <div class="limit-value" id="limit-value">
+          <span class="limit-display" id="limit-display">4h 00m</span>
+          <span class="limit-edit" id="limit-edit" hidden>
+            <input type="number" class="limit-input" id="limit-input-h" min="0" max="23" value="4" />
+            <span class="limit-input-label">h</span>
+            <input type="number" class="limit-input" id="limit-input-m" min="0" max="59" value="0" />
+            <span class="limit-input-label">m</span>
+          </span>
+          <div class="limit-error" id="limit-error" hidden>Invalid time, minimum 1 min</div>
+        </div>
+        <button class="limit-btn" id="limit-up">+</button>
+        <button class="limit-btn limit-tick-btn" id="limit-tick" hidden title="Apply">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn" id="btn-snooze" hidden>Snooze 30m</button>
+        <button class="btn btn-danger" id="btn-stop">Stop for today</button>
+        <button class="btn" id="btn-resume" hidden>Resume</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-page" id="settings-page" hidden>
+    <div class="settings-header">
+      <span class="settings-title">Settings</span>
+      <button class="settings-close" id="settings-back" title="Close">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-group">
+        <div class="settings-row">
+          <span class="settings-label">Auto-start on boot</span>
+          <label class="toggle">
+            <input type="checkbox" id="setting-autostart" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Show debug bar</span>
+          <label class="toggle">
+            <input type="checkbox" id="setting-debug-bar" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-field">
+          <label class="settings-label">Daily reset time</label>
+          <input type="time" class="settings-input" id="setting-reset-time" value="00:00" />
+        </div>
+        <div class="settings-field">
+          <label class="settings-label">Overlay title</label>
+          <input type="text" class="settings-input" id="setting-overlay-title" placeholder="Enough Work!" />
+        </div>
+        <div class="settings-field">
+          <label class="settings-label">Overlay subtitle</label>
+          <input type="text" class="settings-input" id="setting-overlay-subtitle" placeholder="You've done enough for today. Time to step away." />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="debug-bar" hidden>
+    <span class="debug-label">Debug</span>
+    <button class="debug-btn" id="dbg-show-overlay">Show Overlay</button>
+    <button class="debug-btn" id="dbg-set-limit">Set to Limit</button>
+    <button class="debug-btn" id="dbg-clear">Clear State</button>
+    <button class="debug-btn" id="dbg-1min">1m Limit</button>
+    <button class="debug-btn" id="dbg-1min-snooze">1m Snooze</button>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
