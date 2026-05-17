@@ -238,13 +238,17 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 }
             }
 
+            let state_snapshot = state.clone();
+
             {
                 let mut last_save = app_data.last_save.lock().unwrap();
                 if now.duration_since(*last_save) > std::time::Duration::from_secs(60) {
-                    if let Ok(store) = ah.store("enoughwork-store.json") {
-                        save_state(&state, &store);
-                    }
                     *last_save = now;
+                    drop(last_save);
+                    // Disk I/O outside the state lock
+                    if let Ok(store) = ah.store("enoughwork-store.json") {
+                        save_state(&state_snapshot, &store);
+                    }
                 }
             }
 
@@ -259,7 +263,9 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
 
 #[tauri::command]
 pub fn get_settings(app_handle: tauri::AppHandle) -> AppSettings {
-    let store = app_handle.store("enoughwork-store.json").unwrap();
+    let Ok(store) = app_handle.store("enoughwork-store.json") else {
+        return AppSettings::default();
+    };
     store
         .get("settings")
         .and_then(|v| serde_json::from_value::<AppSettings>(v.clone()).ok())
@@ -290,9 +296,11 @@ pub fn save_settings(
         overlay_subtitle,
         reset_time,
     };
-    let store = app_handle.store("enoughwork-store.json").unwrap();
-    let _ = store.set("settings", serde_json::to_value(&settings).unwrap());
-    let _ = store.save();
+    let store = app_handle.store("enoughwork-store.json");
+    if let Ok(store) = store {
+        let _ = store.set("settings", serde_json::to_value(&settings).unwrap());
+        let _ = store.save();
+    }
     settings
 }
 

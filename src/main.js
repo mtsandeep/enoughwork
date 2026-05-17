@@ -366,8 +366,8 @@ $("#dbg-1min-snooze").addEventListener("click", async () => {
 // Refresh every second
 setInterval(refreshState, 1000);
 
-// Initial load
-window.addEventListener("DOMContentLoaded", async () => {
+// Initial load — script is at end of body, DOM is ready
+(async () => {
   await refreshState();
   const dev = await invoke("is_dev");
   if (dev) {
@@ -377,4 +377,4 @@ window.addEventListener("DOMContentLoaded", async () => {
     document.body.appendChild(badge);
     debugBar.hidden = false;
   }
-});
+})();

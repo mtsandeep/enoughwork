@@ -55,6 +55,21 @@ pnpm build
 
 Output binaries will be in `src-tauri/target/release/bundle/`.
 
+## Releasing
+
+Uses [cargo-release](https://github.com/crate-ci/cargo-release) to bump versions in one step.
+
+```bash
+pnpm release:patch   # 0.1.0 → 0.2.0
+pnpm release:minor   # 0.1.0 → 1.0.0
+pnpm release:major   # 1.0.0 → 2.0.0
+```
+
+This will:
+- Bump version in `Cargo.toml`, `package.json`, and `tauri.conf.json`
+- Replace `[Unreleased]` in `CHANGELOG.md` with the version and date, and add a fresh `[Unreleased]` section
+- Commit, tag (`v0.2.0`), and create a GitHub release via the publish workflow
+
 ## Project structure
 
 ```
