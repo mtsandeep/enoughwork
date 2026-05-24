@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EnoughWork</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .anim-layer {
+      position: fixed;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* ===== Paper Plane ===== */
+    .anim-paper-plane .character {
+      position: absolute;
+      left: -80px;
+      top: 50%;
+      width: 60px;
+      height: 60px;
+      opacity: 0;
+      animation: fly-plane 3.5s ease-in-out forwards;
+    }
+    .anim-paper-plane .character svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 4px 12px rgba(79, 70, 229, 0.4));
+    }
+    @keyframes fly-plane {
+      0%   { left: -80px; top: 50%; opacity: 0; transform: rotate(-10deg) scale(0.8); }
+      8%   { opacity: 1; transform: rotate(-5deg) scale(1); }
+      30%  { left: 40%; top: 20%; transform: rotate(5deg) scale(1); }
+      50%  { left: 70%; top: 30%; transform: rotate(15deg) scale(0.95); }
+      65%  { left: 85%; top: 50%; transform: rotate(0deg) scale(0.9); }
+      78%  { left: 75%; top: 70%; transform: rotate(-20deg) scale(0.85); }
+      88%  { left: 82%; top: 80%; transform: rotate(10deg) scale(0.8); }
+      100% { left: calc(100vw - 100px); top: calc(100vh - 90px); opacity: 0.3; transform: rotate(45deg) scale(0.6); }
+    }
+
+    /* Add future animations here:
+       .anim-butterfly .character { ... }
+       .anim-robot .character { ... }
+    */
+  </style>
+</head>
+<body>
+  <!-- Paper Plane -->
+  <div class="anim-layer anim-paper-plane">
+    <div class="character">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 28L58 8L36 56L28 36L4 28Z" fill="#4f46e5" stroke="#4338ca" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M28 36L58 8" stroke="#6366f1" stroke-width="1.5" opacity="0.6"/>
+        <path d="M4 28L28 36L36 56" stroke="#818cf8" stroke-width="1" opacity="0.4"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Add future animation layers here:
+    <div class="anim-layer anim-butterfly">...</div>
+    <div class="anim-layer anim-robot">...</div>
+  -->
+
+  <script>
+    const { emit } = window.__TAURI__.event;
+
+    // Read animation type from URL query param
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type") || "paper-plane";
+
+    // Show the matching animation layer
+    const layer = document.querySelector(`.anim-${type}`);
+    if (layer) {
+      layer.style.display = "block";
+    }
+
+    // Emit done event after animation completes
+    const duration = 3600;
+    setTimeout(() => {
+      emit("animation-done");
+    }, duration);
+  </script>
+</body>
+</html>

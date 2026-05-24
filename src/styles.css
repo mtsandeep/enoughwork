@@ -278,6 +278,39 @@ body {
   max-width: 400px;
 }
 
+/* ===== Activity Heatmap ===== */
+.heatmap {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.heatmap-square {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #e5e7eb;
+  cursor: default;
+}
+
+.heatmap-square:hover {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.heatmap-green {
+  background: #22c55e;
+}
+
+.heatmap-orange {
+  background: #f59e0b;
+}
+
+.heatmap-red {
+  background: #ef4444;
+}
+
 .snooze-progress-track {
   width: 100%;
   height: 6px;
@@ -410,6 +443,35 @@ body {
 .overlay-btn-snooze:hover {
   border-color: #a0a0b8;
   color: white;
+}
+
+/* ===== Quiet Icon ===== */
+.quiet-icon {
+  position: fixed;
+  top: 16px;
+  right: 52px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.15s;
+  z-index: 10;
+  overflow: visible;
+}
+
+.quiet-icon:hover {
+  color: var(--text);
+}
+
+.quiet-icon.active {
+  color: var(--accent);
+}
+
+.quiet-icon [hidden] {
+  display: none !important;
 }
 
 /* ===== Settings Gear ===== */

@@ -1,6 +1,7 @@
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const { WebviewWindow } = window.__TAURI__.webviewWindow;
+const { getMainWorkArea, bottomRightPosition, getMonitors } = await import("./window-utils.js");
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -11,12 +12,20 @@ function formatTime(secs) {
   return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
 }
 
+function localDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 let currentState = null;
 
 async function refreshState() {
   try {
     currentState = await invoke("get_state");
     render();
+    updateHeatmapColors();
   } catch (e) {
     console.error("get_state error:", e);
   }
@@ -104,6 +113,65 @@ function render() {
   const lH = Math.floor(limit_mins / 60);
   const lM = limit_mins % 60;
   $("#limit-display").textContent = lM > 0 ? `${lH}h ${String(lM).padStart(2, "0")}m` : `${lH}h 00m`;
+
+  // Quiet overlay icon
+  const quietBtn = $("#btn-quiet-overlay");
+  const isQuiet = currentState.quiet_overlay || false;
+  quietBtn.classList.toggle("active", isQuiet);
+  quietBtn.title = isQuiet ? "Mini Notification Enabled (today only)" : "Fullscreen Overlay Enabled";
+  $("#quiet-icon-on").style.display = isQuiet ? "none" : "";
+  $("#quiet-icon-off").style.display = isQuiet ? "" : "none";
+}
+
+// ===== Heatmap =====
+let historyCache = null;
+let heatmapBuilt = false;
+
+async function initHeatmap() {
+  historyCache = await invoke("get_history");
+  buildHeatmap();
+}
+
+function buildHeatmap() {
+  const container = $("#heatmap");
+  if (!container) return;
+  const today = new Date();
+  let html = "";
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = localDateKey(d);
+    html += `<div class="heatmap-square" data-date="${key}" data-today="${i === 0 ? "1" : "0"}"></div>`;
+  }
+  container.innerHTML = html;
+  heatmapBuilt = true;
+  updateHeatmapColors();
+}
+
+function updateHeatmapColors() {
+  if (!historyCache || !heatmapBuilt) return;
+  const squares = document.querySelectorAll(".heatmap-square");
+  squares.forEach((sq) => {
+    const key = sq.dataset.date;
+    const isToday = sq.dataset.today === "1";
+    const secs = isToday ? (currentState?.active_secs || 0) : (historyCache[key] || 0);
+    const hours = secs / 3600;
+
+    sq.className = "heatmap-square";
+    if (secs === 0) {
+      // default gray
+    } else if (hours <= 8.5) {
+      sq.classList.add("heatmap-green");
+    } else if (hours <= 11) {
+      sq.classList.add("heatmap-orange");
+    } else {
+      sq.classList.add("heatmap-red");
+    }
+
+    const h = Math.floor(hours);
+    const m = Math.floor((hours - h) * 60);
+    sq.title = secs > 0 ? `${key}: ${h}h ${String(m).padStart(2, "0")}m` : `${key}: No data`;
+  });
 }
 
 // Limit controls — + and − buttons (snap to 30-min boundaries)
@@ -224,29 +292,166 @@ $("#btn-resume").addEventListener("click", async () => {
   render();
 });
 
-let overlayWindows = [];
+$("#btn-quiet-overlay").addEventListener("click", async () => {
+  const newVal = !(currentState?.quiet_overlay || false);
+  currentState = await invoke("set_quiet_overlay", { enabled: newVal });
+  render();
+});
 
-async function openOverlay() {
-  // Close existing overlays and wait
+// ===== Overlay & Animation Windows =====
+let overlayWindows = [];
+let animWindow = null;
+let notifyWindow = null;
+let animSafetyTimeout = null;
+
+async function closeAllOverlays() {
   for (const w of overlayWindows) {
     try { await w.close(); } catch {}
   }
   overlayWindows = [];
+  if (animWindow) {
+    try { await animWindow.close(); } catch {}
+    animWindow = null;
+  }
+  if (notifyWindow) {
+    try { await notifyWindow.close(); } catch {}
+    notifyWindow = null;
+  }
+  if (animSafetyTimeout) {
+    clearTimeout(animSafetyTimeout);
+    animSafetyTimeout = null;
+  }
+}
 
-  // Brief pause to let OS clean up old windows
-  await new Promise(r => setTimeout(r, 200));
+async function openOverlay() {
+  await closeAllOverlays();
+  await new Promise(r => setTimeout(r, 100));
+
+  const state = await invoke("get_state");
+
+  if (state.quiet_overlay) {
+    // Quiet: just one small popup, nothing else
+    await openNotifyPopup();
+    return;
+  }
+
+  // Default mode
+  try {
+    const isFullscreen = await invoke("is_fullscreen_app_running");
+    if (isFullscreen) {
+      await openAnimatedNotification();
+    } else {
+      await openFullscreenOverlay();
+    }
+  } catch (e) {
+    console.error("Overlay check failed, falling back to fullscreen:", e);
+    await openFullscreenOverlay();
+  }
+}
+
+async function openAnimatedNotification() {
+  const settings = await invoke("get_settings");
+  const animType = settings.animation_type || "paper-plane";
+
+  // Get the monitor the fullscreen app is on — must exist
+  const monitor = await invoke("get_foreground_monitor");
+  if (!monitor) {
+    console.error("No fullscreen monitor found");
+    return;
+  }
+
+  // Use fullscreen + position on the right monitor instead of explicit size
+  // to avoid DPI mismatches
+  animWindow = new WebviewWindow("anim-0", {
+    url: `animation.html?type=${encodeURIComponent(animType)}`,
+    fullscreen: true,
+    x: monitor.x,
+    y: monitor.y,
+    transparent: true,
+    decorations: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    title: "EnoughWork",
+  });
+
+  // Show fullscreen overlay on other monitors (no fullscreen app there)
+  await openFullscreenOverlayExcept(monitor);
 
   try {
-    const monitors = await window.__TAURI__.window.availableMonitors();
+    await new Promise(r => setTimeout(r, 300));
+    await animWindow.setIgnoreCursorEvents(true);
+  } catch (e) {
+    console.error("setIgnoreCursorEvents failed:", e);
+  }
+
+  // Safety timeout: close anim window after 5s if event doesn't fire
+  animSafetyTimeout = setTimeout(async () => {
+    if (animWindow) {
+      try { await animWindow.close(); } catch {}
+      animWindow = null;
+    }
+    await openNotifyPopup(monitor);
+  }, 5000);
+
+  const unlisten = await listen("animation-done", async () => {
+    unlisten();
+    if (animSafetyTimeout) {
+      clearTimeout(animSafetyTimeout);
+      animSafetyTimeout = null;
+    }
+    if (animWindow) {
+      try { await animWindow.close(); } catch {}
+      animWindow = null;
+    }
+    await openNotifyPopup(monitor);
+  });
+}
+
+async function openNotifyPopup(targetMonitor) {
+  const popupW = 320;
+  const popupH = 180;
+  const margin = 16;
+
+  let posX = 100, posY = 100;
+  try {
+    const workArea = targetMonitor || await getMainWorkArea();
+    const pos = await bottomRightPosition(workArea, popupW, popupH, margin);
+    posX = pos.x;
+    posY = pos.y;
+  } catch (e) {
+    console.error("[notify-pos]", e);
+  }
+
+  notifyWindow = new WebviewWindow("notify-0", {
+    url: "notify.html",
+    width: popupW,
+    height: popupH,
+    x: posX,
+    y: posY,
+    decorations: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    title: "EnoughWork",
+  });
+
+  try {
+    const { PhysicalPosition } = window.__TAURI__.window;
+    await notifyWindow.setPosition(new PhysicalPosition(posX, posY));
+  } catch {}
+}
+
+async function openFullscreenOverlay() {
+  try {
+    const monitors = await getMonitors();
 
     if (!monitors || monitors.length <= 1) {
       throw new Error("single monitor");
     }
 
-    // Create fullscreen overlay on each monitor
     for (let i = 0; i < monitors.length; i++) {
       const pos = monitors[i].position;
-      const w = new WebviewWindow(`overlay-${i}`, {
+      const w = new WebviewWindow(`overlay-${overlayWindows.length}`, {
         url: "overlay.html",
         fullscreen: true,
         x: pos.x,
@@ -274,6 +479,34 @@ async function openOverlay() {
   }
 }
 
+async function openFullscreenOverlayExcept(skipMonitor) {
+  try {
+    const monitors = await getMonitors();
+    if (!monitors || monitors.length <= 1) return;
+
+    for (let i = 0; i < monitors.length; i++) {
+      const pos = monitors[i].position;
+      // Skip the monitor where the fullscreen app is running
+      if (skipMonitor && pos.x === skipMonitor.x && pos.y === skipMonitor.y) continue;
+
+      const w = new WebviewWindow(`overlay-${overlayWindows.length}`, {
+        url: "overlay.html",
+        fullscreen: true,
+        x: pos.x,
+        y: pos.y,
+        alwaysOnTop: true,
+        decorations: false,
+        skipTaskbar: true,
+        backgroundColor: "#0f0f1a",
+        title: "EnoughWork",
+      });
+      overlayWindows.push(w);
+    }
+  } catch (e) {
+    console.error("Multi-monitor overlay (except) failed:", e);
+  }
+}
+
 // Listen for show-overlay event from Rust
 listen("show-overlay", openOverlay);
 
@@ -286,6 +519,7 @@ const debugBarToggle = $("#setting-debug-bar");
 const resetTimeInput = $("#setting-reset-time");
 const overlayTitleInput = $("#setting-overlay-title");
 const overlaySubtitleInput = $("#setting-overlay-subtitle");
+const animationTypeSelect = $("#setting-animation-type");
 const debugBar = $(".debug-bar");
 
 let settingsLoaded = false;
@@ -297,6 +531,7 @@ async function loadSettings() {
   resetTimeInput.value = settings.reset_time || "00:00";
   overlayTitleInput.value = settings.overlay_title;
   overlaySubtitleInput.value = settings.overlay_subtitle;
+  animationTypeSelect.value = settings.animation_type || "paper-plane";
   const autostart = await invoke("get_autostart");
   autostartToggle.checked = autostart;
   autostartChanged = false;
@@ -307,6 +542,7 @@ async function loadSettings() {
     overlayTitle: overlayTitleInput.value,
     overlaySubtitle: overlaySubtitleInput.value,
     resetTime: resetTimeInput.value,
+    animationType: animationTypeSelect.value,
   };
   // Version
   const version = await invoke("get_version");
@@ -332,11 +568,13 @@ function applyPendingSettings() {
     overlayTitle: overlayTitleInput.value || "Enough Work!",
     overlaySubtitle: overlaySubtitleInput.value || "You've done enough for today. Time to step away.",
     resetTime: resetTimeInput.value || "00:00",
+    animationType: animationTypeSelect.value || "paper-plane",
   };
   if (settingsSnapshot && (
     current.overlayTitle !== settingsSnapshot.overlayTitle ||
     current.overlaySubtitle !== settingsSnapshot.overlaySubtitle ||
-    current.resetTime !== settingsSnapshot.resetTime
+    current.resetTime !== settingsSnapshot.resetTime ||
+    current.animationType !== settingsSnapshot.animationType
   )) {
     invoke("save_settings", current);
     settingsSnapshot = { ...current };
@@ -369,10 +607,7 @@ debugBarToggle.addEventListener("change", () => {
 
 // Listen for overlay-close event
 listen("close-overlay", async () => {
-  for (const w of overlayWindows) {
-    try { await w.close(); } catch {}
-  }
-  overlayWindows = [];
+  await closeAllOverlays();
   await refreshState();
 });
 
@@ -406,12 +641,25 @@ $("#dbg-1min-snooze").addEventListener("click", async () => {
   render();
 });
 
+// Debug: show animation overlay
+$("#dbg-show-anim").addEventListener("click", async () => {
+  const isFullscreen = await invoke("is_fullscreen_app_running");
+  if (!isFullscreen) {
+    alert("No presentation or fullscreen found");
+    return;
+  }
+  await openAnimatedNotification();
+});
+
 // Refresh every second
 setInterval(refreshState, 1000);
 
 // Initial load — script is at end of body, DOM is ready
 (async () => {
   await refreshState();
+  await initHeatmap();
+
+
   const dev = await invoke("is_dev");
   if (dev) {
     const badge = document.createElement("div");

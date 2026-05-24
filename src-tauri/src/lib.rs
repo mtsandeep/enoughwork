@@ -110,6 +110,11 @@ pub fn run() {
             commands::get_autostart,
             commands::is_dev,
             commands::get_version,
+            commands::get_history,
+            commands::is_fullscreen_app_running,
+            commands::set_quiet_overlay,
+            commands::get_foreground_monitor,
+            commands::get_main_work_area,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
