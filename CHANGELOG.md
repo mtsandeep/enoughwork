@@ -4,6 +4,16 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Quiet mode — mini notification popup instead of fullscreen overlay (useful during meetings)
+- "Star Drop" animation — spinning star with laser trail following a parabolic arch
+- Activity heatmap showing daily work totals for the last 30 days with hover tooltips
+- Settings: "When fullscreen app detected" — toggle fullscreen overlay or choose animation
+
+### Changed
+- Settings page UI refined for a lighter, more minimal feel
+- Migrated frontend build to Vite for more flexibility with npm packages
+
 ## [0.1.2] - 2026-05-17
 
 ### Added
@@ -14,8 +24,6 @@ All notable changes to EnoughWork will be documented in this file.
 - Auto-start on boot now applies on settings close instead of on every toggle
 - Settings only write to disk when values actually changed
 - Auto-start state re-checks OS on every settings open (detects external changes)
-
-## [0.1.1] - 2026-05-17
 
 ## [0.1.1] - 2026-05-17
 

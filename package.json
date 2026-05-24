@@ -13,9 +13,11 @@
     "release:major": "command -v cargo-release >/dev/null 2>&1 || cargo install cargo-release && cd src-tauri && cargo release major --execute"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "vite": "^8.0.14"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.6",
     "@tauri-apps/plugin-autostart": "~2.5.1",
     "@tauri-apps/plugin-store": "~2.4.3"
   }

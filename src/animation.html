@@ -14,78 +14,147 @@
     }
     .anim-layer {
       position: fixed;
-      width: 100vw;
-      height: 100vh;
+      inset: 0;
       pointer-events: none;
       display: none;
     }
 
-    /* ===== Paper Plane ===== */
-    .anim-paper-plane .character {
+    .anim-star-drop svg {
       position: absolute;
-      left: -80px;
-      top: 50%;
-      width: 60px;
-      height: 60px;
-      opacity: 0;
-      animation: fly-plane 3.5s ease-in-out forwards;
-    }
-    .anim-paper-plane .character svg {
+      inset: 0;
       width: 100%;
       height: 100%;
-      filter: drop-shadow(0 4px 12px rgba(79, 70, 229, 0.4));
     }
-    @keyframes fly-plane {
-      0%   { left: -80px; top: 50%; opacity: 0; transform: rotate(-10deg) scale(0.8); }
-      8%   { opacity: 1; transform: rotate(-5deg) scale(1); }
-      30%  { left: 40%; top: 20%; transform: rotate(5deg) scale(1); }
-      50%  { left: 70%; top: 30%; transform: rotate(15deg) scale(0.95); }
-      65%  { left: 85%; top: 50%; transform: rotate(0deg) scale(0.9); }
-      78%  { left: 75%; top: 70%; transform: rotate(-20deg) scale(0.85); }
-      88%  { left: 82%; top: 80%; transform: rotate(10deg) scale(0.8); }
-      100% { left: calc(100vw - 100px); top: calc(100vh - 90px); opacity: 0.3; transform: rotate(45deg) scale(0.6); }
+    .anim-star-drop .end-glow {
+      opacity: 0;
     }
-
-    /* Add future animations here:
-       .anim-butterfly .character { ... }
-       .anim-robot .character { ... }
-    */
   </style>
 </head>
 <body>
-  <!-- Paper Plane -->
-  <div class="anim-layer anim-paper-plane">
-    <div class="character">
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4 28L58 8L36 56L28 36L4 28Z" fill="#4f46e5" stroke="#4338ca" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M28 36L58 8" stroke="#6366f1" stroke-width="1.5" opacity="0.6"/>
-        <path d="M4 28L28 36L36 56" stroke="#818cf8" stroke-width="1" opacity="0.4"/>
-      </svg>
-    </div>
+  <div class="anim-layer anim-star-drop">
+    <svg id="main-svg" viewBox="0 0 1000 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="starGlow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <!-- Parabolic arch: bottom-left → top-center → bottom-right -->
+      <path id="swirl-path" fill="none" d="M 20,560 C 500,-100 500,-100 980,560"/>
+      <circle class="end-glow" cx="980" cy="560" r="4" fill="#6366f1"/>
+    </svg>
   </div>
 
-  <!-- Add future animation layers here:
-    <div class="anim-layer anim-butterfly">...</div>
-    <div class="anim-layer anim-robot">...</div>
-  -->
-
   <script>
-    const { emit } = window.__TAURI__.event;
-
-    // Read animation type from URL query param
     const params = new URLSearchParams(window.location.search);
-    const type = params.get("type") || "paper-plane";
+    const type = params.get("type") || "star-drop";
 
-    // Show the matching animation layer
     const layer = document.querySelector(`.anim-${type}`);
     if (layer) {
       layer.style.display = "block";
     }
 
-    // Emit done event after animation completes
-    const duration = 3600;
+    const svg = document.getElementById("main-svg");
+    const path = document.getElementById("swirl-path");
+    const endGlow = document.querySelector(".end-glow");
+
+    if (path && svg) {
+      const ns = "http://www.w3.org/2000/svg";
+      const totalLen = path.getTotalLength();
+      const duration = 4300;
+      const trailLen = 150;
+      const numSegs = 14;
+      const segLen = trailLen / numSegs;
+
+      // Build non-overlapping trail segments — each covers its own slice
+      const trailSegs = [];
+      for (let i = 0; i < numSegs; i++) {
+        const line = document.createElementNS(ns, "line");
+        const t = (i + 0.5) / numSegs; // midpoint of segment, 0=tail 1=head
+        const alpha = 0.1 + 0.9 * t * t;
+        const width = 0.3 + 2 * t;
+        line.setAttribute("stroke", `rgba(129,140,248,${alpha.toFixed(2)})`);
+        line.setAttribute("stroke-width", width.toFixed(1));
+        line.setAttribute("stroke-linecap", "round");
+        svg.appendChild(line);
+        trailSegs.push({ el: line, startFrac: i / numSegs, endFrac: (i + 1) / numSegs });
+      }
+
+      // Create 5-point star
+      const star = document.createElementNS(ns, "polygon");
+      star.setAttribute("fill", "#e0e7ff");
+      star.setAttribute("filter", "url(#starGlow)");
+      svg.appendChild(star);
+
+      const starR = 9;
+      const starr = 3.5;
+
+      function buildStarPoints(cx, cy, rotation) {
+        const pts = [];
+        for (let i = 0; i < 10; i++) {
+          const angle = (Math.PI * 2 * i / 10) - Math.PI / 2 + rotation;
+          const radius = i % 2 === 0 ? starR : starr;
+          pts.push(`${(cx + radius * Math.cos(angle)).toFixed(1)},${(cy + radius * Math.sin(angle)).toFixed(1)}`);
+        }
+        return pts.join(" ");
+      }
+
+      let start = null;
+
+      // Slow launch, quicker finish
+      function ease(x) {
+        return 1 - Math.pow(1 - x, 1.8);
+      }
+
+      function step(ts) {
+        if (!start) start = ts;
+        const elapsed = ts - start;
+        const progress = Math.min(elapsed / duration, 1);
+
+        const t = ease(progress);
+        const currentPos = t * totalLen;
+
+        // Update trail segments — each covers its own slice of the tail
+        for (const seg of trailSegs) {
+          const d0 = Math.max(0, currentPos - trailLen + seg.startFrac * trailLen);
+          const d1 = Math.max(0, currentPos - trailLen + seg.endFrac * trailLen);
+          const p0 = path.getPointAtLength(d0);
+          const p1 = path.getPointAtLength(d1);
+          seg.el.setAttribute("x1", p0.x);
+          seg.el.setAttribute("y1", p0.y);
+          seg.el.setAttribute("x2", p1.x);
+          seg.el.setAttribute("y2", p1.y);
+        }
+
+        // Update star
+        const headPt = path.getPointAtLength(currentPos);
+        const rotation = (elapsed / 250) * (Math.PI / 180);
+        star.setAttribute("points", buildStarPoints(headPt.x, headPt.y, rotation));
+
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          star.setAttribute("points", "");
+          trailSegs.forEach(s => s.el.remove());
+          if (endGlow) {
+            endGlow.style.transition = "none";
+            endGlow.style.opacity = "0.8";
+            endGlow.setAttribute("r", "8");
+            setTimeout(() => {
+              endGlow.style.transition = "all 0.8s ease-out";
+              endGlow.style.opacity = "0";
+              endGlow.setAttribute("r", "40");
+            }, 50);
+          }
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Signal completion to Tauri
+    const duration = 4600;
     setTimeout(() => {
-      emit("animation-done");
+      try { window.__TAURI__.event.emit("animation-done"); } catch (_) {}
     }, duration);
   </script>
 </body>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EnoughWork</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
 
@@ -48,8 +48,6 @@
       <div class="progress-fill" id="progress" style="width: 0%"></div>
     </div>
 
-    <div class="heatmap" id="heatmap"></div>
-
     <div class="snooze-bar" id="snooze-bar" hidden>
       <div class="snooze-progress-track">
         <div class="snooze-progress-fill" id="snooze-progress" style="width: 0%"></div>
@@ -83,7 +81,11 @@
         <button class="btn" id="btn-resume" hidden>Resume</button>
       </div>
     </div>
+
+    <div class="heatmap" id="heatmap"></div>
   </div>
+
+  <div class="heatmap-tooltip" id="heatmap-tooltip" hidden></div>
 
   <div class="settings-page" id="settings-page" hidden>
     <div class="settings-header">
@@ -125,16 +127,33 @@
           <label class="settings-label">Overlay subtitle</label>
           <input type="text" class="settings-input" id="setting-overlay-subtitle" placeholder="You've done enough for today. Time to step away." />
         </div>
-        <div class="settings-field">
-          <label class="settings-label">Animation (when fullscreen app detected)</label>
-          <select class="settings-input" id="setting-animation-type">
-            <option value="paper-plane">Paper Plane</option>
-          </select>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title">When fullscreen app detected</div>
+        <div class="fullscreen-grid">
+          <div class="fullscreen-field">
+            <span class="settings-label">Fullscreen overlay</span>
+            <label class="toggle">
+              <input type="checkbox" id="setting-force-fullscreen" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="fullscreen-field" id="animation-field">
+            <span class="settings-label" id="animation-label">Animation</span>
+            <div class="select-wrapper">
+              <select class="settings-input setting-input-small" id="setting-animation-type">
+                <option value="none">None</option>
+                <option value="star-drop">Star Drop</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </div>
     <div class="settings-version" id="settings-version"></div>
   </div>
+
+  <div class="heatmap-tooltip" id="heatmap-tooltip" hidden></div>
 
   <div class="debug-bar" hidden>
     <span class="debug-label">Debug</span>
@@ -146,6 +165,6 @@
     <button class="debug-btn" id="dbg-show-anim">Show Animation</button>
   </div>
 
-  <script type="module" src="main.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -39,6 +39,7 @@ pub struct AppSettings {
     pub overlay_title: String,
     pub overlay_subtitle: String,
     pub reset_time: String,
+    pub force_fullscreen_overlay: bool,
     pub animation_type: String,
 }
 
@@ -48,7 +49,8 @@ impl Default for AppSettings {
             overlay_title: "Enough Work!".into(),
             overlay_subtitle: "You've done enough for today. Time to step away.".into(),
             reset_time: "00:00".into(),
-            animation_type: "paper-plane".into(),
+            force_fullscreen_overlay: false,
+            animation_type: "star-drop".into(),
         }
     }
 }
@@ -364,6 +366,7 @@ pub fn save_settings(
     overlay_title: String,
     overlay_subtitle: String,
     reset_time: String,
+    force_fullscreen_overlay: bool,
     animation_type: String,
     app_handle: tauri::AppHandle,
 ) -> AppSettings {
@@ -371,6 +374,7 @@ pub fn save_settings(
         overlay_title,
         overlay_subtitle,
         reset_time,
+        force_fullscreen_overlay,
         animation_type,
     };
     let store = app_handle.store("enoughwork-store.json");

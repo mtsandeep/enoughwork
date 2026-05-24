@@ -1,3 +1,5 @@
+import { computePosition, flip, shift, offset as floatingOffset } from "@floating-ui/dom";
+
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const { WebviewWindow } = window.__TAURI__.webviewWindow;
@@ -158,6 +160,7 @@ function updateHeatmapColors() {
     const hours = secs / 3600;
 
     sq.className = "heatmap-square";
+    sq.dataset.today = isToday ? "1" : "0";
     if (secs === 0) {
       // default gray
     } else if (hours <= 8.5) {
@@ -170,7 +173,39 @@ function updateHeatmapColors() {
 
     const h = Math.floor(hours);
     const m = Math.floor((hours - h) * 60);
-    sq.title = secs > 0 ? `${key}: ${h}h ${String(m).padStart(2, "0")}m` : `${key}: No data`;
+    sq.dataset.tooltipDate = key;
+    sq.dataset.tooltipTime = secs > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : "";
+    sq.dataset.tooltipLabel = secs > 0 ? (isToday ? "Today" : "Worked") : "No data";
+  });
+}
+
+// Heatmap tooltip
+const heatmapEl = document.getElementById("heatmap");
+const heatmapTooltip = document.getElementById("heatmap-tooltip");
+if (heatmapEl && heatmapTooltip) {
+  heatmapEl.addEventListener("mouseover", async (e) => {
+    const sq = e.target.closest(".heatmap-square");
+    if (!sq) return;
+    const date = sq.dataset.tooltipDate;
+    const time = sq.dataset.tooltipTime;
+    const label = sq.dataset.tooltipLabel;
+    heatmapTooltip.innerHTML = time
+      ? `<div class="tt-date">${date}</div><div class="tt-time">${time}</div>`
+      : `<div class="tt-date">${date}</div><div class="tt-label">${label}</div>`;
+    heatmapTooltip.hidden = false;
+
+    const { x, y } = await computePosition(sq, heatmapTooltip, {
+      placement: "top",
+      middleware: [floatingOffset(6), flip(), shift({ padding: 8 })],
+    });
+    heatmapTooltip.style.left = `${x}px`;
+    heatmapTooltip.style.top = `${y}px`;
+  });
+
+  heatmapEl.addEventListener("mouseout", (e) => {
+    if (!heatmapEl.contains(e.relatedTarget)) {
+      heatmapTooltip.hidden = true;
+    }
   });
 }
 
@@ -337,8 +372,10 @@ async function openOverlay() {
 
   // Default mode
   try {
+    const settings = await invoke("get_settings");
+    const forceFS = settings.force_fullscreen_overlay === true;
     const isFullscreen = await invoke("is_fullscreen_app_running");
-    if (isFullscreen) {
+    if (isFullscreen && !forceFS) {
       await openAnimatedNotification();
     } else {
       await openFullscreenOverlay();
@@ -351,19 +388,25 @@ async function openOverlay() {
 
 async function openAnimatedNotification() {
   const settings = await invoke("get_settings");
-  const animType = settings.animation_type || "paper-plane";
+  const animType = settings.animation_type || "star-drop";
 
   // Get the monitor the fullscreen app is on — must exist
   const monitor = await invoke("get_foreground_monitor");
-  if (!monitor) {
-    console.error("No fullscreen monitor found");
+  if (!monitor) return;
+
+  // Show fullscreen overlay on other monitors
+  await openFullscreenOverlayExcept(monitor);
+
+  // No animation — just show notify immediately
+  if (animType === "none") {
+    await openNotifyPopup(monitor);
     return;
   }
 
   // Use fullscreen + position on the right monitor instead of explicit size
   // to avoid DPI mismatches
   animWindow = new WebviewWindow("anim-0", {
-    url: `animation.html?type=${encodeURIComponent(animType)}`,
+    url: `src/animation.html?type=${encodeURIComponent(animType)}`,
     fullscreen: true,
     x: monitor.x,
     y: monitor.y,
@@ -374,15 +417,16 @@ async function openAnimatedNotification() {
     title: "EnoughWork",
   });
 
-  // Show fullscreen overlay on other monitors (no fullscreen app there)
-  await openFullscreenOverlayExcept(monitor);
+  // Force above fullscreen apps
+  try {
+    await new Promise(r => setTimeout(r, 200));
+    await animWindow.setAlwaysOnTop(true);
+  } catch {}
 
   try {
     await new Promise(r => setTimeout(r, 300));
     await animWindow.setIgnoreCursorEvents(true);
-  } catch (e) {
-    console.error("setIgnoreCursorEvents failed:", e);
-  }
+  } catch {}
 
   // Safety timeout: close anim window after 5s if event doesn't fire
   animSafetyTimeout = setTimeout(async () => {
@@ -399,11 +443,12 @@ async function openAnimatedNotification() {
       clearTimeout(animSafetyTimeout);
       animSafetyTimeout = null;
     }
+    // Open notify immediately, close anim in parallel
+    openNotifyPopup(monitor);
     if (animWindow) {
       try { await animWindow.close(); } catch {}
       animWindow = null;
     }
-    await openNotifyPopup(monitor);
   });
 }
 
@@ -418,12 +463,12 @@ async function openNotifyPopup(targetMonitor) {
     const pos = await bottomRightPosition(workArea, popupW, popupH, margin);
     posX = pos.x;
     posY = pos.y;
-  } catch (e) {
-    console.error("[notify-pos]", e);
+  } catch (_) {
+    // fallback to default position
   }
 
   notifyWindow = new WebviewWindow("notify-0", {
-    url: "notify.html",
+    url: "src/notify.html",
     width: popupW,
     height: popupH,
     x: posX,
@@ -434,11 +479,6 @@ async function openNotifyPopup(targetMonitor) {
     resizable: false,
     title: "EnoughWork",
   });
-
-  try {
-    const { PhysicalPosition } = window.__TAURI__.window;
-    await notifyWindow.setPosition(new PhysicalPosition(posX, posY));
-  } catch {}
 }
 
 async function openFullscreenOverlay() {
@@ -452,7 +492,7 @@ async function openFullscreenOverlay() {
     for (let i = 0; i < monitors.length; i++) {
       const pos = monitors[i].position;
       const w = new WebviewWindow(`overlay-${overlayWindows.length}`, {
-        url: "overlay.html",
+        url: "src/overlay.html",
         fullscreen: true,
         x: pos.x,
         y: pos.y,
@@ -490,7 +530,7 @@ async function openFullscreenOverlayExcept(skipMonitor) {
       if (skipMonitor && pos.x === skipMonitor.x && pos.y === skipMonitor.y) continue;
 
       const w = new WebviewWindow(`overlay-${overlayWindows.length}`, {
-        url: "overlay.html",
+        url: "src/overlay.html",
         fullscreen: true,
         x: pos.x,
         y: pos.y,
@@ -520,6 +560,8 @@ const resetTimeInput = $("#setting-reset-time");
 const overlayTitleInput = $("#setting-overlay-title");
 const overlaySubtitleInput = $("#setting-overlay-subtitle");
 const animationTypeSelect = $("#setting-animation-type");
+const forceFullscreenToggle = $("#setting-force-fullscreen");
+const animationLabel = $("#animation-label");
 const debugBar = $(".debug-bar");
 
 let settingsLoaded = false;
@@ -531,7 +573,12 @@ async function loadSettings() {
   resetTimeInput.value = settings.reset_time || "00:00";
   overlayTitleInput.value = settings.overlay_title;
   overlaySubtitleInput.value = settings.overlay_subtitle;
-  animationTypeSelect.value = settings.animation_type || "paper-plane";
+  animationTypeSelect.value = settings.animation_type || "star-drop";
+  const forceFS = settings.force_fullscreen_overlay === true;
+  forceFullscreenToggle.checked = forceFS;
+  const animField = $("#animation-field");
+  animField.style.opacity = forceFS ? "0.35" : "";
+  animationTypeSelect.disabled = forceFS;
   const autostart = await invoke("get_autostart");
   autostartToggle.checked = autostart;
   autostartChanged = false;
@@ -542,6 +589,7 @@ async function loadSettings() {
     overlayTitle: overlayTitleInput.value,
     overlaySubtitle: overlaySubtitleInput.value,
     resetTime: resetTimeInput.value,
+    forceFullscreenOverlay: forceFullscreenToggle.checked,
     animationType: animationTypeSelect.value,
   };
   // Version
@@ -568,12 +616,14 @@ function applyPendingSettings() {
     overlayTitle: overlayTitleInput.value || "Enough Work!",
     overlaySubtitle: overlaySubtitleInput.value || "You've done enough for today. Time to step away.",
     resetTime: resetTimeInput.value || "00:00",
-    animationType: animationTypeSelect.value || "paper-plane",
+    forceFullscreenOverlay: forceFullscreenToggle.checked,
+    animationType: animationTypeSelect.value || "star-drop",
   };
   if (settingsSnapshot && (
     current.overlayTitle !== settingsSnapshot.overlayTitle ||
     current.overlaySubtitle !== settingsSnapshot.overlaySubtitle ||
     current.resetTime !== settingsSnapshot.resetTime ||
+    current.forceFullscreenOverlay !== settingsSnapshot.forceFullscreenOverlay ||
     current.animationType !== settingsSnapshot.animationType
   )) {
     invoke("save_settings", current);
@@ -585,6 +635,13 @@ function applyPendingSettings() {
     autostartChanged = false;
   }
 }
+
+forceFullscreenToggle.addEventListener("change", () => {
+  const fs = forceFullscreenToggle.checked;
+  const animField = $("#animation-field");
+  animField.style.opacity = fs ? "0.35" : "";
+  animationTypeSelect.disabled = fs;
+});
 
 backBtn.addEventListener("click", () => {
   settingsPage.hidden = true;
@@ -603,6 +660,7 @@ mainWindow.onCloseRequested(() => {
 
 debugBarToggle.addEventListener("change", () => {
   debugBar.hidden = !debugBarToggle.checked;
+  document.getElementById("main-content").style.paddingBottom = debugBarToggle.checked ? "48px" : "";
 });
 
 // Listen for overlay-close event
@@ -612,7 +670,15 @@ listen("close-overlay", async () => {
 });
 
 // Debug: show overlay
-$("#dbg-show-overlay").addEventListener("click", openOverlay);
+$("#dbg-show-overlay").addEventListener("click", async () => {
+  const fs = await invoke("is_fullscreen_app_running");
+  const monitor = await invoke("get_foreground_monitor");
+  if (fs) {
+    await openAnimatedNotification();
+  } else {
+    await openFullscreenOverlay();
+  }
+});
 
 // Debug: set elapsed to limit
 $("#dbg-set-limit").addEventListener("click", async () => {
@@ -643,12 +709,21 @@ $("#dbg-1min-snooze").addEventListener("click", async () => {
 
 // Debug: show animation overlay
 $("#dbg-show-anim").addEventListener("click", async () => {
-  const isFullscreen = await invoke("is_fullscreen_app_running");
-  if (!isFullscreen) {
-    alert("No presentation or fullscreen found");
-    return;
-  }
-  await openAnimatedNotification();
+  const { WebviewWindow } = window.__TAURI__.webviewWindow;
+  const animWin = new WebviewWindow("anim-preview", {
+    url: "src/animation.html",
+    fullscreen: false,
+    width: 800,
+    height: 500,
+    x: 200,
+    y: 200,
+    transparent: true,
+    decorations: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+  });
+  setTimeout(async () => { try { await animWin.close(); } catch(_) {} }, 4000);
 });
 
 // Refresh every second
@@ -667,5 +742,6 @@ setInterval(refreshState, 1000);
     badge.textContent = "DEV";
     document.body.appendChild(badge);
     debugBar.hidden = false;
+    document.getElementById("main-content").style.paddingBottom = "48px";
   }
 })();

@@ -4,7 +4,10 @@
   "version": "0.1.2",
   "identifier": "com.mtsandeep.enoughwork",
   "build": {
-    "frontendDist": "../src"
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "pnpm vite",
+    "beforeBuildCommand": "pnpm vite build"
   },
   "app": {
     "withGlobalTauri": true,
