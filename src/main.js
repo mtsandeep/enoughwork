@@ -56,6 +56,7 @@ function render() {
       total,
       elapsed_secs: currentState.elapsed_secs || 0,
       ended: remaining <= 0,
+      over_secs: remaining <= 0 ? Math.max(0, now - currentState.break_until) : 0,
     });
   }
 
@@ -110,8 +111,7 @@ function render() {
   if (status === "snoozed" && snooze_until) {
     const now = Date.now() / 1000;
     const remaining = Math.max(0, Math.ceil(snooze_until - now));
-    const started = currentState.snooze_started_at || snooze_until - 30 * 60;
-    const total = snooze_until - started;
+    const total = currentState.total_snooze_secs || 0;
     const elapsed = total - remaining;
     const pct = total > 0 ? Math.min((elapsed / total) * 100, 100) : 0;
 
@@ -120,8 +120,11 @@ function render() {
 
     // Show snooze button during snooze to extend
     $("#btn-snooze").hidden = false;
+    const totalSnoozeMins = Math.round(total / 60);
+    $("#btn-snooze").textContent = "Snooze 30m";
   } else {
     snoozeBar.hidden = true;
+    $("#btn-snooze").textContent = "Snooze 30m";
   }
 
   // Status
@@ -182,7 +185,8 @@ function breakOverlayUrl() {
   const remaining = Math.max(0, currentState.break_until - now);
   const total = currentState.break_duration_secs || 0;
   const elapsed_secs = currentState.elapsed_secs || 0;
-  return `src/break-countdown.html?remaining=${remaining}&total=${total}&elapsed_secs=${elapsed_secs}`;
+  const over_secs = remaining <= 0 ? Math.max(0, now - currentState.break_until) : 0;
+  return `src/break-countdown.html?remaining=${remaining}&total=${total}&elapsed_secs=${elapsed_secs}&over_secs=${over_secs}`;
 }
 
 async function openBreakOverlay() {

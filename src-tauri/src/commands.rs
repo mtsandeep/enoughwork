@@ -16,6 +16,8 @@ pub struct TimerState {
     pub snooze_until: Option<i64>,
     pub snooze_started_at: Option<i64>, // when snooze first began
     #[serde(default)]
+    pub total_snooze_secs: u64,
+    #[serde(default)]
     pub quiet_overlay: bool,
     // Break fields
     #[serde(default)]
@@ -42,6 +44,7 @@ impl Default for TimerState {
             status: "active".into(),
             snooze_until: None,
             snooze_started_at: None,
+            total_snooze_secs: 0,
             quiet_overlay: false,
             break_until: None,
             break_started_at: None,
@@ -185,6 +188,7 @@ pub fn snooze(minutes: u64, app_handle: tauri::AppHandle) -> TimerState {
     // If already snoozed, extend; otherwise start fresh
     let current_until = state.snooze_until.unwrap_or(now_ts);
     state.snooze_until = Some(std::cmp::max(current_until, now_ts) + extra_secs);
+    state.total_snooze_secs += minutes * 60;
 
     if state.snooze_started_at.is_none() {
         state.snooze_started_at = Some(now_ts);
@@ -258,10 +262,8 @@ pub fn start_break(duration_secs: u64, app_handle: tauri::AppHandle) -> TimerSta
 
 #[tauri::command]
 pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
-    let t0 = std::time::Instant::now();
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
-    let wait_ms = t0.elapsed().as_millis();
     let now_ts = chrono::Local::now().timestamp();
 
     // Record actual break time taken
@@ -279,28 +281,23 @@ pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
     if state.elapsed_secs >= state.limit_mins * 60 {
         state.status = "limit_reached".into();
         drop(state);
-        eprintln!("[break] resume_from_break: mutex_wait={wait_ms}ms, total={}ms -> limit_reached", t0.elapsed().as_millis());
         let _ = app_handle.emit("show-overlay", ());
         return app_handle.state::<AppData>().state.lock().unwrap().clone();
     }
     state.status = "active".into();
-    eprintln!("[break] resume_from_break: mutex_wait={wait_ms}ms, total={}ms -> active", t0.elapsed().as_millis());
     state.clone()
 }
 
 #[tauri::command]
 pub fn extend_break(add_secs: u64, app_handle: tauri::AppHandle) -> TimerState {
-    let t0 = std::time::Instant::now();
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
-    let wait_ms = t0.elapsed().as_millis();
     let now_ts = chrono::Local::now().timestamp();
     if state.status == "on_break" {
         let current = state.break_until.unwrap_or(now_ts);
         state.break_until = Some(std::cmp::max(current, now_ts) + add_secs as i64);
         state.break_duration_secs += add_secs;
     }
-    eprintln!("[break] extend_break: mutex_wait={wait_ms}ms, total={}ms", t0.elapsed().as_millis());
     state.clone()
 }
 

@@ -528,13 +528,13 @@ body {
 .break-ring-bg {
   fill: none;
   stroke: #2a2a3e;
-  stroke-width: 8;
+  stroke-width: 5;
 }
 
 .break-ring-fill {
   fill: none;
   stroke: #0d9488;
-  stroke-width: 8;
+  stroke-width: 5;
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear;
 }
@@ -550,9 +550,26 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.break-overlay-time.has-hours {
+  font-size: 38px;
+}
+
 .break-overlay-subtitle {
   font-size: 18px;
   color: #a0a0b8;
+}
+
+.break-overlay-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.break-overlay-supercharge {
+  font-size: 22px;
+  font-weight: 600;
+  color: #fbbf24;
+  opacity: 0.9;
 }
 
 .break-overlay-actions {
@@ -593,8 +610,12 @@ body {
   color: white;
 }
 
+.break-ended .break-ring-fill {
+  stroke: #f59e0b;
+}
+
 .break-ended .break-overlay-time {
-  color: #5eead4;
+  color: #f59e0b;
 }
 
 .break-ended .break-overlay-resume {
