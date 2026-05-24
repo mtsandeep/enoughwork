@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EnoughWork</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="break-overlay-container">
+    <div class="break-overlay-ring">
+      <svg class="break-overlay-ring-svg" viewBox="0 0 200 200">
+        <circle class="break-ring-bg" cx="100" cy="100" r="88" />
+        <circle class="break-ring-fill" id="break-ring-fill" cx="100" cy="100" r="88" />
+      </svg>
+      <div class="break-overlay-time" id="break-time">--:--</div>
+    </div>
+    <div class="break-overlay-subtitle" id="break-subtitle">Work time: 0h 00m</div>
+    <div class="break-overlay-actions">
+      <button class="break-overlay-btn break-overlay-extend" id="btn-extend">+5 min</button>
+      <button class="break-overlay-btn break-overlay-resume" id="btn-resume">Resume Work</button>
+    </div>
+  </div>
+  <script src="break-countdown.js"></script>
+</body>
+</html>

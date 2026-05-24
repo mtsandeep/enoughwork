@@ -113,6 +113,10 @@ pub fn run() {
             commands::get_history,
             commands::is_fullscreen_app_running,
             commands::set_quiet_overlay,
+            commands::start_break,
+            commands::resume_from_break,
+            commands::extend_break,
+            commands::suggest_break,
             commands::get_foreground_monitor,
             commands::get_main_work_area,
         ])

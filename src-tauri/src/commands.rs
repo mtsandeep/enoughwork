@@ -17,6 +17,19 @@ pub struct TimerState {
     pub snooze_started_at: Option<i64>, // when snooze first began
     #[serde(default)]
     pub quiet_overlay: bool,
+    // Break fields
+    #[serde(default)]
+    pub break_until: Option<i64>,
+    #[serde(default)]
+    pub break_started_at: Option<i64>,
+    #[serde(default)]
+    pub break_duration_secs: u64,
+    #[serde(default)]
+    pub total_break_secs: u64,
+    #[serde(default)]
+    pub break_count: u32,
+    #[serde(default)]
+    pub last_break_ended_at: Option<i64>,
 }
 
 impl Default for TimerState {
@@ -30,8 +43,26 @@ impl Default for TimerState {
             snooze_until: None,
             snooze_started_at: None,
             quiet_overlay: false,
+            break_until: None,
+            break_started_at: None,
+            break_duration_secs: 0,
+            total_break_secs: 0,
+            break_count: 0,
+            last_break_ended_at: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DayRecord {
+    pub active_secs: u64,
+    pub break_secs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BreakSuggestion {
+    pub suggested_min: u32,
+    pub work_min: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +126,8 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
 
     if state.date != today {
         let old_date = state.date.clone();
-        let old_secs = state.active_secs;
+        let old_active = state.active_secs;
+        let old_break = state.total_break_secs;
         state.date = today;
         state.elapsed_secs = 0;
         state.active_secs = 0;
@@ -103,10 +135,16 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         state.snooze_until = None;
         state.snooze_started_at = None;
         state.quiet_overlay = false;
+        state.break_until = None;
+        state.break_started_at = None;
+        state.break_duration_secs = 0;
+        state.total_break_secs = 0;
+        state.break_count = 0;
+        state.last_break_ended_at = None;
         drop(state);
-        if !old_date.is_empty() && old_secs > 0 {
+        if !old_date.is_empty() && old_active > 0 {
             if let Ok(store) = app_handle.store("enoughwork-store.json") {
-                save_daily_history(&old_date, old_secs, &store);
+                save_daily_history(&old_date, old_active, old_break, &store);
             }
         }
         state = app_data.state.lock().unwrap();
@@ -206,6 +244,95 @@ pub fn set_quiet_overlay(enabled: bool, app_handle: tauri::AppHandle) -> TimerSt
     state.clone()
 }
 
+#[tauri::command]
+pub fn start_break(duration_secs: u64, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    state.status = "on_break".into();
+    state.break_until = Some(now_ts + duration_secs as i64);
+    state.break_started_at = Some(now_ts);
+    state.break_duration_secs = duration_secs;
+    state.clone()
+}
+
+#[tauri::command]
+pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
+    let t0 = std::time::Instant::now();
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let wait_ms = t0.elapsed().as_millis();
+    let now_ts = chrono::Local::now().timestamp();
+
+    // Record actual break time taken
+    if let Some(started) = state.break_started_at {
+        let actual = (now_ts - started) as u64;
+        state.total_break_secs += actual;
+    }
+    state.break_count += 1;
+    state.last_break_ended_at = Some(now_ts);
+    state.break_until = None;
+    state.break_started_at = None;
+    state.break_duration_secs = 0;
+
+    // If past limit, go to limit_reached; otherwise active
+    if state.elapsed_secs >= state.limit_mins * 60 {
+        state.status = "limit_reached".into();
+        drop(state);
+        eprintln!("[break] resume_from_break: mutex_wait={wait_ms}ms, total={}ms -> limit_reached", t0.elapsed().as_millis());
+        let _ = app_handle.emit("show-overlay", ());
+        return app_handle.state::<AppData>().state.lock().unwrap().clone();
+    }
+    state.status = "active".into();
+    eprintln!("[break] resume_from_break: mutex_wait={wait_ms}ms, total={}ms -> active", t0.elapsed().as_millis());
+    state.clone()
+}
+
+#[tauri::command]
+pub fn extend_break(add_secs: u64, app_handle: tauri::AppHandle) -> TimerState {
+    let t0 = std::time::Instant::now();
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let wait_ms = t0.elapsed().as_millis();
+    let now_ts = chrono::Local::now().timestamp();
+    if state.status == "on_break" {
+        let current = state.break_until.unwrap_or(now_ts);
+        state.break_until = Some(std::cmp::max(current, now_ts) + add_secs as i64);
+        state.break_duration_secs += add_secs;
+    }
+    eprintln!("[break] extend_break: mutex_wait={wait_ms}ms, total={}ms", t0.elapsed().as_millis());
+    state.clone()
+}
+
+#[tauri::command]
+pub fn suggest_break(app_handle: tauri::AppHandle) -> BreakSuggestion {
+    let app_data = app_handle.state::<AppData>();
+    let state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+
+    // Work time since last break ended (or since day start)
+    let work_start = state.last_break_ended_at.unwrap_or_else(|| {
+        // Approximate day start from elapsed_secs
+        now_ts - state.elapsed_secs as i64
+    });
+    let work_secs = (now_ts - work_start).max(0) as u64;
+    let work_min = (work_secs / 60) as u32;
+
+    let suggested_min = if work_min < 30 {
+        5
+    } else if work_min < 60 {
+        10
+    } else if work_min < 120 {
+        15
+    } else if work_min < 180 {
+        20
+    } else {
+        30
+    };
+
+    BreakSuggestion { suggested_min, work_min }
+}
+
 pub fn load_state(store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) -> TimerState {
     store
         .get("timer_state")
@@ -218,18 +345,26 @@ pub fn save_state(state: &TimerState, store: &std::sync::Arc<tauri_plugin_store:
     let _ = store.save();
 }
 
-type DailyHistory = HashMap<String, u64>;
+type DailyHistory = HashMap<String, DayRecord>;
 
 fn load_daily_history(store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) -> DailyHistory {
     store
         .get("daily_history")
-        .and_then(|v| serde_json::from_value::<DailyHistory>(v.clone()).ok())
+        .and_then(|v| {
+            // Try new DayRecord format first
+            if let Ok(h) = serde_json::from_value::<DailyHistory>(v.clone()) {
+                return Some(h);
+            }
+            // Fallback: old format was HashMap<String, u64> — migrate
+            let old: HashMap<String, u64> = serde_json::from_value(v.clone()).ok()?;
+            Some(old.into_iter().map(|(k, secs)| (k, DayRecord { active_secs: secs, break_secs: 0 })).collect())
+        })
         .unwrap_or_default()
 }
 
-fn save_daily_history(date: &str, secs: u64, store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) {
+fn save_daily_history(date: &str, active_secs: u64, break_secs: u64, store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) {
     let mut history = load_daily_history(store);
-    history.insert(date.to_string(), secs);
+    history.insert(date.to_string(), DayRecord { active_secs, break_secs });
     // Prune to last 30 days
     let mut dates: Vec<String> = history.keys().cloned().collect();
     dates.sort();
@@ -244,7 +379,7 @@ fn save_daily_history(date: &str, secs: u64, store: &std::sync::Arc<tauri_plugin
 }
 
 #[tauri::command]
-pub fn get_history(app_handle: tauri::AppHandle) -> HashMap<String, u64> {
+pub fn get_history(app_handle: tauri::AppHandle) -> DailyHistory {
     let Ok(store) = app_handle.store("enoughwork-store.json") else {
         return HashMap::new();
     };
@@ -257,6 +392,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
     let ah = app_handle.clone();
     std::thread::spawn(move || {
         let mut last_tick = Instant::now();
+        let mut break_ended_emitted = false;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(1));
             let now = Instant::now();
@@ -273,17 +409,24 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
 
             if state.date != today {
                 let old_date = state.date.clone();
-                let old_secs = state.active_secs;
+                let old_active = state.active_secs;
+                let old_break = state.total_break_secs;
                 state.date = today;
                 state.elapsed_secs = 0;
                 state.active_secs = 0;
                 state.status = "active".into();
                 state.snooze_until = None;
                 state.snooze_started_at = None;
+                state.break_until = None;
+                state.break_started_at = None;
+                state.break_duration_secs = 0;
+                state.total_break_secs = 0;
+                state.break_count = 0;
+                state.last_break_ended_at = None;
                 drop(state);
-                if !old_date.is_empty() && old_secs > 0 {
+                if !old_date.is_empty() && old_active > 0 {
                     if let Ok(store) = ah.store("enoughwork-store.json") {
-                        save_daily_history(&old_date, old_secs, &store);
+                        save_daily_history(&old_date, old_active, old_break, &store);
                     }
                 }
                 state = app_data.state.lock().unwrap();
@@ -300,16 +443,29 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 }
             }
 
+            // Check break expiry — emit only once
+            if state.status == "on_break" {
+                if let Some(until) = state.break_until {
+                    if chrono::Local::now().timestamp() >= until && !break_ended_emitted {
+                        break_ended_emitted = true;
+                        let _ = ah.emit("break-ended", ());
+                    }
+                }
+            } else {
+                break_ended_emitted = false;
+            }
+
             // Active time always tracks when laptop is awake, regardless of status
             if delta.as_secs() <= 30 {
                 state.active_secs += 1;
             }
 
-            if state.status == "active" && delta.as_secs() <= 30 {
+            // elapsed_secs ticks for both "active" and "on_break" (timer doesn't pause during break)
+            if (state.status == "active" || state.status == "on_break") && delta.as_secs() <= 30 {
                 state.elapsed_secs += 1;
 
                 let limit_secs = state.limit_mins * 60;
-                if state.elapsed_secs >= limit_secs {
+                if state.elapsed_secs >= limit_secs && state.status == "active" {
                     state.status = "limit_reached".into();
                     should_show_overlay = true;
                 }

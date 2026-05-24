@@ -15,6 +15,7 @@ export default {
         animation: resolve(__dirname, "src/animation.html"),
         notify: resolve(__dirname, "src/notify.html"),
         overlay: resolve(__dirname, "src/overlay.html"),
+        "break-countdown": resolve(__dirname, "src/break-countdown.html"),
       },
     },
   },

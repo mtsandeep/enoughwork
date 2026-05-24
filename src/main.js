@@ -1,7 +1,7 @@
 import { computePosition, flip, shift, offset as floatingOffset } from "@floating-ui/dom";
 
 const { invoke } = window.__TAURI__.core;
-const { listen } = window.__TAURI__.event;
+const { listen, emit } = window.__TAURI__.event;
 const { WebviewWindow } = window.__TAURI__.webviewWindow;
 const { getMainWorkArea, bottomRightPosition, getMonitors } = await import("./window-utils.js");
 
@@ -22,6 +22,7 @@ function localDateKey(d) {
 }
 
 let currentState = null;
+let prevBreakStatus = false;
 
 async function refreshState() {
   try {
@@ -38,6 +39,26 @@ function render() {
 
   const { elapsed_secs, limit_mins, status, snooze_until } = currentState;
   const limit_secs = limit_mins * 60;
+
+  // Open/close break overlay on status change
+  const isOnBreak = status === "on_break";
+  if (isOnBreak && !prevBreakStatus) openBreakOverlay();
+  if (!isOnBreak && prevBreakStatus) closeBreakOverlay();
+  prevBreakStatus = isOnBreak;
+
+  // Broadcast break-tick to overlay windows
+  if (isOnBreak && currentState.break_until) {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = Math.max(0, currentState.break_until - now);
+    const total = currentState.break_duration_secs || 0;
+    emit("break-tick", {
+      remaining,
+      total,
+      elapsed_secs: currentState.elapsed_secs || 0,
+      ended: remaining <= 0,
+    });
+  }
+
   const pct = Math.min((elapsed_secs / limit_secs) * 100, 100);
 
   // Elapsed time - big
@@ -60,6 +81,29 @@ function render() {
   // Show/hide stop and resume based on status
   $("#btn-stop").hidden = status === "stopped";
   $("#btn-resume").hidden = status !== "stopped";
+
+  // Take Break button — only when active
+  $("#btn-take-break").hidden = status !== "active";
+
+  // Resume Work button — only when on break
+  $("#btn-resume-break").hidden = status !== "on_break";
+
+  // Stop/snooze hidden during break
+  if (status === "on_break") {
+    $("#btn-stop").hidden = true;
+    $("#btn-snooze").hidden = true;
+    $("#btn-resume").hidden = true;
+  }
+
+  // Break stats
+  const breakStatsEl = $("#break-stats");
+  if (currentState.break_count > 0 && status !== "on_break") {
+    const bm = Math.floor(currentState.total_break_secs / 60);
+    breakStatsEl.textContent = `Breaks today: ${currentState.break_count} (${bm}m total)`;
+    breakStatsEl.hidden = false;
+  } else {
+    breakStatsEl.hidden = true;
+  }
 
   // Snooze bar
   const snoozeBar = $("#snooze-bar");
@@ -86,6 +130,9 @@ function render() {
   if (status === "active") {
     statusEl.textContent = "Active";
     statusEl.classList.add("status-active");
+  } else if (status === "on_break") {
+    statusEl.textContent = "On Break";
+    statusEl.style.color = "#0d9488";
   } else if (status === "snoozed") {
     const remainingSecs = snooze_until
       ? Math.max(0, snooze_until - Math.floor(Date.now() / 1000))
@@ -125,6 +172,81 @@ function render() {
   $("#quiet-icon-off").style.display = isQuiet ? "" : "none";
 }
 
+// ===== Break Overlay Window =====
+let breakOverlayWindows = [];
+let breakOverlayId = 0;
+
+function breakOverlayUrl() {
+  if (!currentState || !currentState.break_until) return "src/break-countdown.html";
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = Math.max(0, currentState.break_until - now);
+  const total = currentState.break_duration_secs || 0;
+  const elapsed_secs = currentState.elapsed_secs || 0;
+  return `src/break-countdown.html?remaining=${remaining}&total=${total}&elapsed_secs=${elapsed_secs}`;
+}
+
+async function openBreakOverlay() {
+  // Close any existing break overlay first
+  await closeBreakOverlay();
+  breakOverlayId++;
+  const url = breakOverlayUrl();
+  try {
+    const monitors = await getMonitors();
+    if (monitors && monitors.length > 1) {
+      for (let i = 0; i < monitors.length; i++) {
+        const pos = monitors[i].position;
+        const label = `overlay-brk-${breakOverlayId}-${i}`;
+        const w = new WebviewWindow(label, {
+          url,
+          fullscreen: true,
+          x: pos.x,
+          y: pos.y,
+          alwaysOnTop: true,
+          decorations: false,
+          skipTaskbar: true,
+          backgroundColor: "#0f0f1a",
+          title: "EnoughWork",
+        });
+        breakOverlayWindows.push(w);
+      }
+    } else {
+      const label = `overlay-brk-${breakOverlayId}`;
+      const w = new WebviewWindow(label, {
+        url,
+        fullscreen: true,
+        alwaysOnTop: true,
+        decorations: false,
+        skipTaskbar: true,
+        backgroundColor: "#0f0f1a",
+        title: "EnoughWork",
+      });
+      breakOverlayWindows.push(w);
+    }
+  } catch (e) {
+    console.error("Break overlay failed:", e);
+  }
+}
+
+async function closeBreakOverlay() {
+  for (const w of breakOverlayWindows) {
+    try { await w.close(); } catch {}
+  }
+  breakOverlayWindows = [];
+}
+
+// Listen for break actions from overlay windows
+listen("break-action", async (event) => {
+  const { action } = event.payload;
+  if (action === "resume") {
+    currentState = await invoke("resume_from_break");
+    await closeBreakOverlay();
+    render();
+  } else if (action === "extend") {
+    currentState = await invoke("extend_break", { addSecs: 300 });
+    render();
+  }
+});
+
 // ===== Heatmap =====
 let historyCache = null;
 let heatmapBuilt = false;
@@ -156,7 +278,11 @@ function updateHeatmapColors() {
   squares.forEach((sq) => {
     const key = sq.dataset.date;
     const isToday = sq.dataset.today === "1";
-    const secs = isToday ? (currentState?.active_secs || 0) : (historyCache[key] || 0);
+    const record = isToday
+      ? { active_secs: currentState?.active_secs || 0, break_secs: currentState?.total_break_secs || 0 }
+      : (historyCache[key] || { active_secs: 0, break_secs: 0 });
+    const secs = record.active_secs || 0;
+    const breakSecs = record.break_secs || 0;
     const hours = secs / 3600;
 
     sq.className = "heatmap-square";
@@ -175,8 +301,17 @@ function updateHeatmapColors() {
     const m = Math.floor((hours - h) * 60);
     sq.dataset.tooltipDate = key;
     sq.dataset.tooltipTime = secs > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : "";
+    sq.dataset.tooltipBreak = breakSecs > 0 ? formatBreakMin(breakSecs) : "";
     sq.dataset.tooltipLabel = secs > 0 ? (isToday ? "Today" : "Worked") : "No data";
   });
+}
+
+function formatBreakMin(secs) {
+  const m = Math.floor(secs / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return rm > 0 ? `${h}h ${String(rm).padStart(2, "0")}m` : `${h}h`;
 }
 
 // Heatmap tooltip
@@ -188,10 +323,16 @@ if (heatmapEl && heatmapTooltip) {
     if (!sq) return;
     const date = sq.dataset.tooltipDate;
     const time = sq.dataset.tooltipTime;
+    const breakTime = sq.dataset.tooltipBreak;
     const label = sq.dataset.tooltipLabel;
-    heatmapTooltip.innerHTML = time
-      ? `<div class="tt-date">${date}</div><div class="tt-time">${time}</div>`
-      : `<div class="tt-date">${date}</div><div class="tt-label">${label}</div>`;
+    let html = `<div class="tt-date">${date}</div>`;
+    if (time) {
+      html += `<div class="tt-time">${time} work</div>`;
+      if (breakTime) html += `<div class="tt-time" style="color:#0d9488">${breakTime} breaks</div>`;
+    } else {
+      html += `<div class="tt-label">${label}</div>`;
+    }
+    heatmapTooltip.innerHTML = html;
     heatmapTooltip.hidden = false;
 
     const { x, y } = await computePosition(sq, heatmapTooltip, {
@@ -235,9 +376,10 @@ $("#limit-down").addEventListener("click", async () => {
   render();
 });
 
-// Click on value text to edit directly
+// Click on limit-value row to edit directly
 const limitDownBtn = $("#limit-down");
 const limitUpBtn = $("#limit-up");
+const limitValueRow = $("#limit-value");
 const limitDisplay = $("#limit-display");
 const limitEdit = $("#limit-edit");
 const limitInputH = $("#limit-input-h");
@@ -294,7 +436,7 @@ async function saveLimitEdit() {
   render();
 }
 
-limitDisplay.addEventListener("click", () => {
+limitValueRow.addEventListener("click", () => {
   if (!limitEdit.hidden) return;
   openLimitEdit();
 });
@@ -333,6 +475,118 @@ $("#btn-quiet-overlay").addEventListener("click", async () => {
   render();
 });
 
+// ===== Break Picker =====
+let breakDurationMin = 15;
+let breakDurationEditing = false;
+
+async function openBreakPicker() {
+  const suggestion = await invoke("suggest_break");
+  breakDurationMin = suggestion.suggested_min;
+
+  // Work info
+  const wh = Math.floor(suggestion.work_min / 60);
+  const wm = suggestion.work_min % 60;
+  const workStr = wh > 0 ? `${wh}h ${String(wm).padStart(2, "0")}m` : `${wm}m`;
+  $("#break-work-info").innerHTML = `You've been working for <strong>${workStr}</strong>`;
+
+  updateBreakDurationDisplay();
+  highlightQuickPick();
+  closeBreakDurationEdit();
+  $("#break-picker-page").hidden = false;
+}
+
+function updateBreakDurationDisplay() {
+  const display = $("#break-duration-display");
+  if (breakDurationMin >= 60 && breakDurationMin % 60 === 0) {
+    display.textContent = `${breakDurationMin / 60}h`;
+  } else {
+    display.textContent = `${breakDurationMin}m`;
+  }
+  highlightQuickPick();
+}
+
+function highlightQuickPick() {
+  document.querySelectorAll(".break-quick-btn").forEach(btn => {
+    btn.classList.toggle("active", parseInt(btn.dataset.min) === breakDurationMin);
+  });
+}
+
+function openBreakDurationEdit() {
+  breakDurationEditing = true;
+  const input = $("#break-input-m");
+  input.value = breakDurationMin;
+  $("#break-duration-display").hidden = true;
+  $("#break-duration-edit").hidden = false;
+  $("#break-duration-row").classList.add("editing");
+  input.focus();
+  input.select();
+}
+
+function closeBreakDurationEdit() {
+  breakDurationEditing = false;
+  $("#break-duration-display").hidden = false;
+  $("#break-duration-edit").hidden = false;
+  $("#break-duration-edit").hidden = true;
+  $("#break-duration-row").classList.remove("editing");
+}
+
+// Take Break button
+$("#btn-take-break").addEventListener("click", openBreakPicker);
+
+// Resume Work from main screen during break
+$("#btn-resume-break").addEventListener("click", async () => {
+  currentState = await invoke("resume_from_break");
+  await closeBreakOverlay();
+  render();
+});
+
+// Close picker
+$("#break-picker-close").addEventListener("click", () => {
+  $("#break-picker-page").hidden = true;
+  closeBreakDurationEdit();
+});
+
+// Click anywhere on the row to edit duration
+$("#break-duration-row").addEventListener("click", () => {
+  if (!breakDurationEditing) openBreakDurationEdit();
+});
+
+// Quick pick buttons
+document.querySelectorAll(".break-quick-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    breakDurationMin = parseInt(btn.dataset.min);
+    updateBreakDurationDisplay();
+    closeBreakDurationEdit();
+  });
+});
+
+// Duration edit: enter/escape
+$("#break-input-m").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const val = parseInt(e.target.value);
+    if (val > 0 && val <= 120) {
+      breakDurationMin = val;
+      updateBreakDurationDisplay();
+      closeBreakDurationEdit();
+    }
+  }
+  if (e.key === "Escape") {
+    closeBreakDurationEdit();
+  }
+});
+
+// Start Break
+$("#btn-start-break").addEventListener("click", async () => {
+  if (breakDurationEditing) {
+    const val = parseInt($("#break-input-m").value);
+    if (val > 0 && val <= 120) breakDurationMin = val;
+    closeBreakDurationEdit();
+  }
+  $("#break-picker-page").hidden = true;
+  currentState = await invoke("start_break", { durationSecs: breakDurationMin * 60 });
+  render();
+});
+
 // ===== Overlay & Animation Windows =====
 let overlayWindows = [];
 let animWindow = null;
@@ -352,6 +606,10 @@ async function closeAllOverlays() {
     try { await notifyWindow.close(); } catch {}
     notifyWindow = null;
   }
+  for (const w of breakOverlayWindows) {
+    try { await w.close(); } catch {}
+  }
+  breakOverlayWindows = [];
   if (animSafetyTimeout) {
     clearTimeout(animSafetyTimeout);
     animSafetyTimeout = null;
@@ -724,6 +982,12 @@ $("#dbg-show-anim").addEventListener("click", async () => {
     resizable: false,
   });
   setTimeout(async () => { try { await animWin.close(); } catch(_) {} }, 4000);
+});
+
+// Debug: 1 min break
+$("#dbg-1min-break").addEventListener("click", async () => {
+  currentState = await invoke("start_break", { durationSecs: 60 });
+  render();
 });
 
 // Refresh every second

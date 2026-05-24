@@ -79,13 +79,52 @@
         <button class="btn" id="btn-snooze" hidden>Snooze 30m</button>
         <button class="btn btn-danger" id="btn-stop">Stop for today</button>
         <button class="btn" id="btn-resume" hidden>Resume</button>
+        <button class="btn btn-break" id="btn-take-break">Take Break</button>
       </div>
+
+      <div class="break-stats" id="break-stats" hidden></div>
+      <button class="btn btn-break" id="btn-resume-break" hidden>Resume Work</button>
     </div>
 
     <div class="heatmap" id="heatmap"></div>
   </div>
 
   <div class="heatmap-tooltip" id="heatmap-tooltip" hidden></div>
+
+  <!-- Break Picker Page -->
+  <div class="break-picker-page" id="break-picker-page" hidden>
+    <button class="settings-close" id="break-picker-close" title="Close">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div class="break-picker-body">
+      <div class="break-picker-work-info" id="break-work-info">You've been working for <strong>2h 30m</strong></div>
+
+      <div class="break-picker-suggestion">
+        <div class="break-picker-label">Break duration</div>
+        <div class="break-duration-row" id="break-duration-row">
+          <span class="break-duration-display" id="break-duration-display">15m</span>
+          <span class="break-duration-edit" id="break-duration-edit" hidden>
+            <input type="number" class="break-duration-input" id="break-input-m" min="1" max="120" value="15" />
+            <span class="limit-input-label">min</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="break-quick-picks" id="break-quick-picks">
+        <button class="break-quick-btn" data-min="5">5m</button>
+        <button class="break-quick-btn" data-min="10">10m</button>
+        <button class="break-quick-btn" data-min="15">15m</button>
+        <button class="break-quick-btn" data-min="20">20m</button>
+        <button class="break-quick-btn" data-min="30">30m</button>
+        <button class="break-quick-btn" data-min="60">1h</button>
+      </div>
+
+      <button class="btn btn-start-break" id="btn-start-break">Start Break</button>
+    </div>
+  </div>
 
   <div class="settings-page" id="settings-page" hidden>
     <div class="settings-header">
@@ -163,6 +202,7 @@
     <button class="debug-btn" id="dbg-1min">1m Limit</button>
     <button class="debug-btn" id="dbg-1min-snooze">1m Snooze</button>
     <button class="debug-btn" id="dbg-show-anim">Show Animation</button>
+    <button class="debug-btn" id="dbg-1min-break">1m Break</button>
   </div>
 
   <script type="module" src="/src/main.js"></script>
