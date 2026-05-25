@@ -5,3 +5,4 @@ src-tauri/target/
 enoughwork-store.json
 .DS_Store
 Thumbs.db
+keys/

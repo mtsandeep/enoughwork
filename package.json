@@ -19,6 +19,7 @@
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
     "@tauri-apps/plugin-autostart": "~2.5.1",
-    "@tauri-apps/plugin-store": "~2.4.3"
+    "@tauri-apps/plugin-store": "~2.4.3",
+    "@tauri-apps/plugin-updater": "^2.10.1"
   }
 }

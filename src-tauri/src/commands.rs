@@ -84,6 +84,7 @@ pub struct AppSettings {
     pub reset_time: String,
     pub force_fullscreen_overlay: bool,
     pub animation_type: String,
+    pub auto_update: bool,
 }
 
 impl Default for AppSettings {
@@ -94,6 +95,7 @@ impl Default for AppSettings {
             reset_time: "00:00".into(),
             force_fullscreen_overlay: false,
             animation_type: "star-drop".into(),
+            auto_update: true,
         }
     }
 }
@@ -540,6 +542,7 @@ pub fn save_settings(
     reset_time: String,
     force_fullscreen_overlay: bool,
     animation_type: String,
+    auto_update: bool,
     app_handle: tauri::AppHandle,
 ) -> AppSettings {
     let settings = AppSettings {
@@ -548,6 +551,7 @@ pub fn save_settings(
         reset_time,
         force_fullscreen_overlay,
         animation_type,
+        auto_update,
     };
     let store = app_handle.store("enoughwork-store.json");
     if let Ok(store) = store {

@@ -13,6 +13,9 @@ All notable changes to EnoughWork will be documented in this file.
 - "Star Drop" animation — spinning star with laser trail following a parabolic arch
 - Activity heatmap showing daily work totals for the last 30 days with hover tooltips
 - Settings: "When fullscreen app detected" — toggle fullscreen overlay or choose animation
+- Auto-check update — checks for new versions on startup and every 4 hours, shows badge when available
+- "Check for Updates" button in settings with download and restart
+- "Auto check for updates" toggle in settings to disable background checks
 
 ### Changed
 - Break overlay is event-driven for reliable sync across multiple monitors

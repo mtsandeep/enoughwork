@@ -7,6 +7,10 @@ const { getMainWorkArea, bottomRightPosition, getMonitors } = await import("./wi
 
 const $ = (sel) => document.querySelector(sel);
 
+// App constants — change these to update repo url
+const GITHUB_REPO = "mtsandeep/enoughwork";
+const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
+
 function formatTime(secs) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
@@ -66,11 +70,10 @@ function render() {
   $("#elapsed").textContent = formatTime(elapsed_secs);
 
   // Progress bar: SVG-based segmented bar
-  const activeSecs = currentState.active_secs || 0;
-  const workPct = limit_secs > 0 ? Math.min((activeSecs / limit_secs) * 100, 100) : 0;
+  const elapsedPct = limit_secs > 0 ? Math.min((elapsed_secs / limit_secs) * 100, 100) : 0;
 
   const progressEl = $("#progress");
-  progressEl.setAttribute("width", workPct);
+  progressEl.setAttribute("width", elapsedPct);
   progressEl.classList.toggle("over-limit", elapsed_secs >= limit_secs);
 
   // Render break segments as SVG rects
@@ -78,11 +81,15 @@ function render() {
   const svgNS = "http://www.w3.org/2000/svg";
   const segments = currentState.break_segments || [];
 
-  // Remove excess break rects
-  const existing = barEl.querySelectorAll(".progress-break");
-  existing.forEach((el, i) => { if (i >= segments.length) el.remove(); });
+  // Remove excess completed break rects (skip "live")
+  barEl.querySelectorAll(".progress-break").forEach((el) => {
+    if (el.dataset.seg === "live") return;
+    if (parseInt(el.dataset.seg) >= segments.length) el.remove();
+  });
 
   for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (seg.duration < 60) continue; // skip breaks under 1 min
     let el = barEl.querySelector(`.progress-break[data-seg="${i}"]`);
     if (!el) {
       el = document.createElementNS(svgNS, "rect");
@@ -92,7 +99,6 @@ function render() {
       el.setAttribute("height", "6");
       barEl.appendChild(el);
     }
-    const seg = segments[i];
     const segPct = limit_secs > 0 ? (seg.duration / limit_secs) * 100 : 0;
     const leftPct = limit_secs > 0 ? (seg.active_at_start / limit_secs) * 100 : 0;
     el.setAttribute("x", leftPct);
@@ -117,7 +123,7 @@ function render() {
     const now = Math.floor(Date.now() / 1000);
     const currentBreakDur = Math.max(0, now - currentState.break_started_at);
     const segPct = limit_secs > 0 ? (currentBreakDur / limit_secs) * 100 : 0;
-    const leftPct = limit_secs > 0 ? (activeSecs / limit_secs) * 100 : 0;
+    const leftPct = limit_secs > 0 ? ((elapsed_secs - currentBreakDur) / limit_secs) * 100 : 0;
     el.setAttribute("x", leftPct);
     el.setAttribute("width", Math.max(0.5, segPct));
     const bm = Math.floor(currentBreakDur / 60);
@@ -893,6 +899,7 @@ const settingsPage = $("#settings-page");
 const gearBtn = $("#settings-gear");
 const backBtn = $("#settings-back");
 const autostartToggle = $("#setting-autostart");
+const autoUpdateToggle = $("#setting-auto-update");
 const debugBarToggle = $("#setting-debug-bar");
 const resetTimeInput = $("#setting-reset-time");
 const overlayTitleInput = $("#setting-overlay-title");
@@ -921,6 +928,7 @@ async function loadSettings() {
   autostartToggle.checked = autostart;
   autostartChanged = false;
   debugBarToggle.checked = !debugBar.hasAttribute("hidden");
+  autoUpdateToggle.checked = settings.auto_update !== false;
   settingsLoaded = true;
   // Snapshot for dirty check
   settingsSnapshot = {
@@ -929,10 +937,11 @@ async function loadSettings() {
     resetTime: resetTimeInput.value,
     forceFullscreenOverlay: forceFullscreenToggle.checked,
     animationType: animationTypeSelect.value,
+    autoUpdate: autoUpdateToggle.checked,
   };
   // Version
   const version = await invoke("get_version");
-  $("#settings-version").textContent = `v${version}`;
+  $("#settings-version-text").textContent = `v${version}`;
 }
 
 gearBtn.addEventListener("click", async () => {
@@ -956,13 +965,15 @@ function applyPendingSettings() {
     resetTime: resetTimeInput.value || "00:00",
     forceFullscreenOverlay: forceFullscreenToggle.checked,
     animationType: animationTypeSelect.value || "star-drop",
+    autoUpdate: autoUpdateToggle.checked,
   };
   if (settingsSnapshot && (
     current.overlayTitle !== settingsSnapshot.overlayTitle ||
     current.overlaySubtitle !== settingsSnapshot.overlaySubtitle ||
     current.resetTime !== settingsSnapshot.resetTime ||
     current.forceFullscreenOverlay !== settingsSnapshot.forceFullscreenOverlay ||
-    current.animationType !== settingsSnapshot.animationType
+    current.animationType !== settingsSnapshot.animationType ||
+    current.autoUpdate !== settingsSnapshot.autoUpdate
   )) {
     invoke("save_settings", current);
     settingsSnapshot = { ...current };
@@ -984,6 +995,10 @@ forceFullscreenToggle.addEventListener("change", () => {
 backBtn.addEventListener("click", () => {
   settingsPage.hidden = true;
   applyPendingSettings();
+  // Clear update status when leaving settings
+  const statusEl = $("#update-status");
+  statusEl.hidden = true;
+  statusEl.innerHTML = "";
 });
 
 autostartToggle.addEventListener("change", () => {
@@ -998,7 +1013,6 @@ mainWindow.onCloseRequested(() => {
 
 debugBarToggle.addEventListener("change", () => {
   debugBar.hidden = !debugBarToggle.checked;
-  document.getElementById("main-content").style.paddingBottom = debugBarToggle.checked ? "48px" : "";
 });
 
 // Listen for overlay-close event
@@ -1073,11 +1087,140 @@ $("#dbg-1min-break").addEventListener("click", async () => {
 // Refresh every second
 setInterval(refreshState, 1000);
 
+// ===== Auto Update =====
+let pendingUpdate = null;
+
+async function checkForUpdate(showStatus = false) {
+  const statusEl = $("#update-status");
+  try {
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const update = await check();
+
+    if (update) {
+      pendingUpdate = update;
+      const badge = $("#update-badge");
+      badge.textContent = `Update available → v${update.version}`;
+      badge.hidden = false;
+      badge.classList.remove("updating");
+
+      // Shift badge next to DEV badge if present
+      const devBadge = document.querySelector(".dev-badge");
+      if (devBadge) badge.parentElement.classList.add("has-dev-badge");
+
+      if (showStatus && statusEl) {
+        renderUpdateStatus(statusEl, "available", update.version);
+      }
+    } else {
+      pendingUpdate = null;
+      if (showStatus && statusEl) {
+        statusEl.textContent = "You're on the latest version";
+        statusEl.className = "settings-update-status success";
+        statusEl.hidden = false;
+        setTimeout(() => { statusEl.hidden = true; }, 3000);
+      }
+    }
+  } catch (e) {
+    pendingUpdate = null;
+    if (showStatus && statusEl) {
+      statusEl.innerHTML = `Check failed! <a href="${GITHUB_RELEASES_URL}" target="_blank">Download from GitHub</a>`;
+      statusEl.className = "settings-update-status error";
+      statusEl.hidden = false;
+    }
+  }
+}
+
+const downloadIcon = `<svg class="update-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v12.586l3.293-3.293a1 1 0 0 1 1.414 1.414l-5 5a1 1 0 0 1-1.414 0l-5-5a1 1 0 1 1 1.414-1.414L11 15.586V3a1 1 0 0 1 1-1zM4 17a1 1 0 0 1 1 1v2h14v-2a1 1 0 1 1 2 0v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a1 1 0 0 1 1-1z"/></svg>`;
+
+function renderUpdateStatus(el, state, version) {
+  el.classList.remove("success", "error");
+  switch (state) {
+    case "available":
+      el.innerHTML = `v${version} ${downloadIcon}`;
+      el.className = "settings-update-status success clickable";
+      el.hidden = false;
+      break;
+    case "downloading":
+      el.textContent = "Downloading...";
+      el.className = "settings-update-status";
+      el.hidden = false;
+      break;
+    case "restarting":
+      el.textContent = "Restarting...";
+      el.className = "settings-update-status";
+      el.hidden = false;
+      break;
+    case "error":
+      el.innerHTML = `Error! Try again. <a href="${GITHUB_RELEASES_URL}" target="_blank">Download from GitHub</a>`;
+      el.className = "settings-update-status error";
+      el.hidden = false;
+      break;
+  }
+}
+
+async function downloadAndUpdate(statusEl) {
+  if (!pendingUpdate) return;
+  const version = pendingUpdate.version;
+
+  // Update badge
+  const badge = $("#update-badge");
+  badge.textContent = "Downloading...";
+  badge.classList.add("updating");
+  // Hide GitHub link if visible
+  const ghLink = document.getElementById("badge-gh-link");
+  if (ghLink) ghLink.hidden = true;
+
+  // Update settings status
+  renderUpdateStatus(statusEl, "downloading", version);
+
+  try {
+    await pendingUpdate.downloadAndInstall();
+    badge.textContent = "Restarting...";
+    renderUpdateStatus(statusEl, "restarting", version);
+    await new Promise(r => setTimeout(r, 2000));
+    await window.__TAURI__.process.relaunch();
+  } catch (e) {
+    badge.textContent = "Error! Try again";
+    badge.classList.remove("updating");
+    badge.classList.add("error");
+    // Show GitHub link outside badge
+    let ghLink = document.getElementById("badge-gh-link");
+    if (!ghLink) {
+      ghLink = document.createElement("a");
+      ghLink.id = "badge-gh-link";
+      ghLink.className = "badge-gh-link";
+      ghLink.target = "_blank";
+      badge.parentElement.appendChild(ghLink);
+    }
+    ghLink.href = GITHUB_RELEASES_URL;
+    ghLink.textContent = "or Download from GitHub";
+    ghLink.hidden = false;
+    renderUpdateStatus(statusEl, "error", version);
+  }
+}
+
+// Update badge click → download + install + restart
+$("#update-badge").addEventListener("click", () => downloadAndUpdate(null));
+
+// Settings status click → download + install + restart
+$("#update-status").addEventListener("click", () => downloadAndUpdate($("#update-status")));
+
+// Settings "Check for Updates" button
+$("#btn-check-updates").addEventListener("click", () => checkForUpdate(true));
+
+// Re-check every 4 hours (only when auto-update is on)
+let updateInterval = null;
+function startAutoUpdate() {
+  if (updateInterval) return;
+  updateInterval = setInterval(() => checkForUpdate(false), 4 * 60 * 60 * 1000);
+}
+function stopAutoUpdate() {
+  if (updateInterval) { clearInterval(updateInterval); updateInterval = null; }
+}
+
 // Initial load — script is at end of body, DOM is ready
 (async () => {
   await refreshState();
   await initHeatmap();
-
 
   const dev = await invoke("is_dev");
   if (dev) {
@@ -1086,6 +1229,12 @@ setInterval(refreshState, 1000);
     badge.textContent = "DEV";
     document.body.appendChild(badge);
     debugBar.hidden = false;
-    document.getElementById("main-content").style.paddingBottom = "48px";
+  }
+
+  // Auto-update: check on startup + schedule interval if enabled
+  const settings = await invoke("get_settings");
+  if (settings.auto_update !== false) {
+    checkForUpdate(false);
+    startAutoUpdate();
   }
 })();
