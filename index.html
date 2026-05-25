@@ -39,8 +39,11 @@
       <div class="elapsed-time" id="elapsed">0h 00m 00s</div>
     </div>
 
-    <div class="progress-bar">
-      <div class="progress-fill" id="progress" style="width: 0%"></div>
+    <div class="progress-bar" id="progress-bar">
+      <svg id="progress-svg" viewBox="0 0 100 6" preserveAspectRatio="none">
+        <rect class="progress-track" x="0" y="0" width="100" height="6" />
+        <rect class="progress-fill" id="progress" x="0" y="0" width="0" height="6" />
+      </svg>
     </div>
 
     <div class="snooze-bar" id="snooze-bar" hidden>
@@ -85,6 +88,7 @@
   </div>
 
   <div class="heatmap-tooltip" id="heatmap-tooltip" hidden></div>
+  <div class="heatmap-tooltip" id="break-tooltip" hidden></div>
 
   <!-- Break Picker Page -->
   <div class="break-picker-page" id="break-picker-page" hidden>

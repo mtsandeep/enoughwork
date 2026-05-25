@@ -65,10 +65,69 @@ function render() {
   // Elapsed time - big
   $("#elapsed").textContent = formatTime(elapsed_secs);
 
-  // Progress bar
+  // Progress bar: SVG-based segmented bar
+  const activeSecs = currentState.active_secs || 0;
+  const workPct = limit_secs > 0 ? Math.min((activeSecs / limit_secs) * 100, 100) : 0;
+
   const progressEl = $("#progress");
-  progressEl.style.width = pct + "%";
+  progressEl.setAttribute("width", workPct);
   progressEl.classList.toggle("over-limit", elapsed_secs >= limit_secs);
+
+  // Render break segments as SVG rects
+  const barEl = $("#progress-svg");
+  const svgNS = "http://www.w3.org/2000/svg";
+  const segments = currentState.break_segments || [];
+
+  // Remove excess break rects
+  const existing = barEl.querySelectorAll(".progress-break");
+  existing.forEach((el, i) => { if (i >= segments.length) el.remove(); });
+
+  for (let i = 0; i < segments.length; i++) {
+    let el = barEl.querySelector(`.progress-break[data-seg="${i}"]`);
+    if (!el) {
+      el = document.createElementNS(svgNS, "rect");
+      el.classList.add("progress-break");
+      el.setAttribute("data-seg", i);
+      el.setAttribute("y", "0");
+      el.setAttribute("height", "6");
+      barEl.appendChild(el);
+    }
+    const seg = segments[i];
+    const segPct = limit_secs > 0 ? (seg.duration / limit_secs) * 100 : 0;
+    const leftPct = limit_secs > 0 ? (seg.active_at_start / limit_secs) * 100 : 0;
+    el.setAttribute("x", leftPct);
+    el.setAttribute("width", Math.max(seg.duration > 0 ? 0.5 : 0, segPct));
+    const bm = Math.floor(seg.duration / 60);
+    const bh = Math.floor(bm / 60);
+    const bmr = bm % 60;
+    el.dataset.breakLabel = bh > 0 ? `Break: ${bh}h ${String(bmr).padStart(2, "0")}m` : `Break: ${bm}m`;
+  }
+
+  // Show current ongoing break if active
+  if (status === "on_break" && currentState.break_started_at) {
+    let el = barEl.querySelector(`.progress-break[data-seg="live"]`);
+    if (!el) {
+      el = document.createElementNS(svgNS, "rect");
+      el.classList.add("progress-break");
+      el.setAttribute("data-seg", "live");
+      el.setAttribute("y", "0");
+      el.setAttribute("height", "6");
+      barEl.appendChild(el);
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const currentBreakDur = Math.max(0, now - currentState.break_started_at);
+    const segPct = limit_secs > 0 ? (currentBreakDur / limit_secs) * 100 : 0;
+    const leftPct = limit_secs > 0 ? (activeSecs / limit_secs) * 100 : 0;
+    el.setAttribute("x", leftPct);
+    el.setAttribute("width", Math.max(0.5, segPct));
+    const bm = Math.floor(currentBreakDur / 60);
+    const bh = Math.floor(bm / 60);
+    const bmr = bm % 60;
+    el.dataset.breakLabel = bh > 0 ? `Break: ${bh}h ${String(bmr).padStart(2, "0")}m` : `Break: ${bm}m`;
+  } else {
+    const live = $("#progress-svg").querySelector(`.progress-break[data-seg="live"]`);
+    if (live) live.remove();
+  }
 
   // Show snooze button when at/past limit or limit_reached or snoozed
   const pastLimit = elapsed_secs >= limit_secs;
@@ -350,6 +409,29 @@ if (heatmapEl && heatmapTooltip) {
 }
 
 // Limit controls — + and − buttons (snap to 30-min boundaries)
+// Progress bar break tooltip
+const breakTooltip = document.getElementById("break-tooltip");
+const progressSvg = document.getElementById("progress-svg");
+if (progressSvg && breakTooltip) {
+  progressSvg.addEventListener("mouseover", async (e) => {
+    const rect = e.target.closest(".progress-break");
+    if (!rect || !rect.dataset.breakLabel) return;
+    breakTooltip.innerHTML = `<div class="tt-time">${rect.dataset.breakLabel}</div>`;
+    breakTooltip.hidden = false;
+    const { x, y } = await computePosition(rect, breakTooltip, {
+      placement: "top",
+      middleware: [floatingOffset(6), flip(), shift({ padding: 8 })],
+    });
+    breakTooltip.style.left = `${x}px`;
+    breakTooltip.style.top = `${y}px`;
+  });
+  progressSvg.addEventListener("mouseout", (e) => {
+    if (!progressSvg.contains(e.relatedTarget)) {
+      breakTooltip.hidden = true;
+    }
+  });
+}
+
 function snapUp(mins) {
   if (mins < 30) return 30;
   const next = Math.ceil((mins + 1) / 30) * 30;

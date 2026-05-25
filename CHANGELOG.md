@@ -7,6 +7,7 @@ All notable changes to EnoughWork will be documented in this file.
 ### Added
 - "Take Break" — adaptive break timer with smart suggestion, fullscreen countdown overlay, extend/resume controls, and break time tracking in heatmap
 - Break overlay shows "You're Recharged!" with supercharging counter after break ends
+- Break time segemnts added to main work progress bar
 - Cumulative snooze — multiple snoozes add up instead of replacing each other
 - Quiet mode — mini notification popup instead of fullscreen overlay (useful during meetings)
 - "Star Drop" animation — spinning star with laser trail following a parabolic arch

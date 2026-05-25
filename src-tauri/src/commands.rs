@@ -7,6 +7,12 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BreakSegment {
+    pub active_at_start: u64, // active_secs when break started
+    pub duration: u64,        // break duration in seconds
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimerState {
     pub date: String,
     pub elapsed_secs: u64,
@@ -32,6 +38,8 @@ pub struct TimerState {
     pub break_count: u32,
     #[serde(default)]
     pub last_break_ended_at: Option<i64>,
+    #[serde(default)]
+    pub break_segments: Vec<BreakSegment>,
 }
 
 impl Default for TimerState {
@@ -52,6 +60,7 @@ impl Default for TimerState {
             total_break_secs: 0,
             break_count: 0,
             last_break_ended_at: None,
+            break_segments: Vec::new(),
         }
     }
 }
@@ -145,6 +154,7 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         state.total_break_secs = 0;
         state.break_count = 0;
         state.last_break_ended_at = None;
+        state.break_segments.clear();
         drop(state);
         if !old_date.is_empty() && old_active > 0 {
             if let Ok(store) = app_handle.store("enoughwork-store.json") {
@@ -271,6 +281,11 @@ pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
     if let Some(started) = state.break_started_at {
         let actual = (now_ts - started) as u64;
         state.total_break_secs += actual;
+        let active_at = state.active_secs;
+        state.break_segments.push(BreakSegment {
+            active_at_start: active_at,
+            duration: actual,
+        });
     }
     state.break_count += 1;
     state.last_break_ended_at = Some(now_ts);
@@ -423,6 +438,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 state.total_break_secs = 0;
                 state.break_count = 0;
                 state.last_break_ended_at = None;
+                state.break_segments.clear();
                 drop(state);
                 if !old_date.is_empty() && old_active > 0 {
                     if let Ok(store) = ah.store("enoughwork-store.json") {

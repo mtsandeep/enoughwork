@@ -61,6 +61,7 @@ function renderTick({ remaining, total, elapsed_secs, ended, over_secs }) {
       superchargeEl.style.visibility = "visible";
     }
 
+    titleEl.textContent = "You're Recharged!";
     titleEl.style.visibility = "visible";
     container.classList.add("break-ended");
     acted = false;

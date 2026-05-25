@@ -71,20 +71,38 @@ body {
   width: 100%;
   max-width: 400px;
   height: 6px;
-  background: #e5e7eb;
   border-radius: 3px;
   overflow: hidden;
 }
 
-.progress-fill {
+.progress-bar svg {
+  width: 100%;
   height: 100%;
-  background: var(--accent);
-  border-radius: 3px;
+  display: block;
+}
+
+.progress-track {
+  fill: #e5e7eb;
+}
+
+.progress-fill {
+  fill: var(--accent);
   transition: width 1s linear;
 }
 
 .progress-fill.over-limit {
-  background: var(--danger);
+  fill: var(--danger);
+}
+
+.progress-break {
+  fill: #99f6e4;
+  opacity: 0.8;
+  transition: width 1s linear, x 1s linear;
+  cursor: pointer;
+}
+
+.progress-break:hover {
+  opacity: 1;
 }
 
 .status-text {
@@ -545,7 +563,6 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 48px;
-  font-weight: 700;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
 }
@@ -561,7 +578,7 @@ body {
 
 .break-overlay-title {
   font-size: 36px;
-  font-weight: 700;
+  font-weight: 500;
   color: #f59e0b;
 }
 
