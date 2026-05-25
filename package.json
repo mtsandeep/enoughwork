@@ -7,7 +7,8 @@
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
-    "build": "tauri build",
+    "build": "node scripts/build.mjs",
+    "signer": "tauri signer generate -w keys/enoughwork.key",
     "release:patch": "command -v cargo-release >/dev/null 2>&1 || cargo install cargo-release && cd src-tauri && cargo release patch --execute",
     "release:minor": "command -v cargo-release >/dev/null 2>&1 || cargo install cargo-release && cd src-tauri && cargo release minor --execute",
     "release:major": "command -v cargo-release >/dev/null 2>&1 || cargo install cargo-release && cd src-tauri && cargo release major --execute"

@@ -6,3 +6,4 @@ enoughwork-store.json
 .DS_Store
 Thumbs.db
 keys/
+.env
