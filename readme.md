@@ -27,6 +27,7 @@ EnoughWork isn't meant to lock you down. It's a nudge to help you notice how lon
 - **Quiet mode** — mini notification popup instead of fullscreen overlay (useful during meetings)
 - **Activity heatmap** — 30-day colored grid showing daily work and break totals
 - **Progress bar** — shows work progress with break segments at correct positions
+- **Auto-check update** — checks for new versions on startup and every 4 hours, badge notification when available
 - **Fullscreen app detection** — adapts overlay behavior when games or presentations are running
 - **Star Drop animation** — subtle animated notification for fullscreen apps
 - **Multi-monitor support** — overlays appear on all connected monitors
@@ -41,19 +42,28 @@ See [docs/features.md](docs/features.md) for detailed feature documentation and 
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/enoughwork-app.jpg" width="400" alt="Main window" />
+  <img src="screenshots/enoughwork-app.jpg" width="300" alt="Main window" />
   &nbsp;&nbsp;
-  <img src="screenshots/enoughwork-settings.jpg" width="400" alt="Settings" />
+  <img src="screenshots/enoughwork-settings.jpg" width="300" alt="Settings" />
+  &nbsp;&nbsp;
+  <img src="screenshots/enoughwork-take-break.jpg" width="300" alt="Take break picker" />
 </p>
 <p align="center">
-  <img src="screenshots/enoughwork-overlay.jpg" width="600" alt="Limit reached overlay" />
+  <img src="screenshots/enoughwork-break-overlay.jpg" width="300" alt="Break countdown overlay" />
+  &nbsp;&nbsp;
+  <img src="screenshots/enoughwork-break-recharged-overlay.jpg" width="300" alt="Break recharged overlay" />
+</p>
+<p align="center">
+  <img src="screenshots/enoughwork-overlay.jpg" width="400" alt="Limit reached overlay" />
+  &nbsp;&nbsp;
+  <img src="screenshots/enoughwork-mini-notifications.jpg" width="400" alt="Quiet mode notifications" />
 </p>
 
 ## Tech stack
 
 - [Tauri](https://tauri.app/) (Rust backend + webview frontend)
 - Vanilla HTML, CSS, JavaScript (no framework)
-- Plugins: autostart, single-instance, store, tray-icon
+- Plugins: autostart, single-instance, store, tray-icon, updater
 
 ## Getting started
 
@@ -63,6 +73,14 @@ pnpm dev
 ```
 
 ## Build for production
+
+Requires signing keys for auto-update. Copy `.env.example` to `.env` and set the password:
+
+```
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD=your_password
+```
+
+The key file should be at `keys/enoughwork.key` (generate with `pnpm signer`).
 
 ```bash
 pnpm build
