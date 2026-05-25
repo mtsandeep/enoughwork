@@ -10,7 +10,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      body: ${{ steps.changelog.outputs.body }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          version=$(node -p "require('./package.json').version")
+          body=$(awk "/^## \\[${version}\\]/{found=1; next} /^## \\[/{found=0} found" CHANGELOG.md)
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
   publish:
+    needs: prepare
     permissions:
       contents: write
     strategy:
@@ -56,16 +72,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Extract changelog for this version
-        id: changelog
-        run: |
-          version=$(node -p "require('./package.json').version")
-          # Extract section between [version] and the next [x.y.z] or end of sections
-          body=$(awk "/^## \\[${version}\\]/{found=1; next} /^## \\[/{found=0} found" CHANGELOG.md)
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$body" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,7 +80,7 @@ jobs:
         with:
           tagName: app-v__VERSION__
           releaseName: 'EnoughWork v__VERSION__'
-          releaseBody: ${{ steps.changelog.outputs.body }}
+          releaseBody: ${{ needs.prepare.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

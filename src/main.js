@@ -1168,12 +1168,12 @@ async function downloadAndUpdate(statusEl) {
   if (ghLink) ghLink.hidden = true;
 
   // Update settings status
-  renderUpdateStatus(statusEl, "downloading", version);
+  if (statusEl) renderUpdateStatus(statusEl, "downloading", version);
 
   try {
     await pendingUpdate.downloadAndInstall();
     badge.textContent = "Restarting...";
-    renderUpdateStatus(statusEl, "restarting", version);
+    if (statusEl) renderUpdateStatus(statusEl, "restarting", version);
     await new Promise(r => setTimeout(r, 2000));
     await window.__TAURI__.process.relaunch();
   } catch (e) {
@@ -1192,7 +1192,7 @@ async function downloadAndUpdate(statusEl) {
     ghLink.href = GITHUB_RELEASES_URL;
     ghLink.textContent = "or Download from GitHub";
     ghLink.hidden = false;
-    renderUpdateStatus(statusEl, "error", version);
+    if (statusEl) renderUpdateStatus(statusEl, "error", version);
   }
 }
 

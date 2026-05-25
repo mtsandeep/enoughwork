@@ -4,6 +4,10 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Update badge click no longer crashes when settings status element is not present
+- Updater release tag mismatch fix — `latest.json` now uses correct tag URL (`v` instead of `app-v`)
+
 ## [0.1.3] - 2026-05-25
 
 ### Added
