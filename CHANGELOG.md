@@ -4,6 +4,13 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-25
+
+### Fixed
+- Updater signing key mismatch — updated public key in config to match signing key
+
+## [0.1.4] - 2026-05-25
+
 ### Fixed
 - Update badge click no longer crashes when settings status element is not present
 - Updater release tag mismatch fix — `latest.json` now uses correct tag URL (`v` instead of `app-v`)
