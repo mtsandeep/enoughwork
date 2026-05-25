@@ -4,6 +4,9 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Updater signing key mismatch — updated public key in config to match signing key
+
 ## [0.1.4] - 2026-05-25
 
 ### Fixed
