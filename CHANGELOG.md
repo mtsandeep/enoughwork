@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-25
+
 ### Added
 - "Take Break" — adaptive break timer with smart suggestion, fullscreen countdown overlay, extend/resume controls, and break time tracking in heatmap
 - Break overlay shows "You're Recharged!" with supercharging counter after break ends
