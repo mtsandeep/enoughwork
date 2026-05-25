@@ -421,7 +421,7 @@ body {
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 8px 16px;
   background: #f0f0f0;
@@ -439,6 +439,14 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.debug-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .debug-btn {
@@ -455,6 +463,16 @@ body {
 .debug-btn:hover {
   border-color: var(--accent);
   background: var(--accent-light);
+}
+
+.debug-btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.debug-btn-danger:hover {
+  border-color: var(--danger);
+  background: #fef2f2;
 }
 
 /* ===== Overlay Window ===== */
@@ -741,7 +759,7 @@ body {
 .settings-body {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 12px 24px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -892,7 +910,7 @@ body {
 }
 
 .settings-version {
-  padding: 16px 24px;
+  padding: 12px 24px;
   text-align: center;
   font-size: 12px;
   color: var(--muted);

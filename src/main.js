@@ -152,7 +152,7 @@ function render() {
 
   // Break stats
   const breakStatsEl = $("#break-stats");
-  if (currentState.break_count > 0 && status !== "on_break") {
+  if (currentState.break_count > 0 && currentState.total_break_secs >= 60 && status !== "on_break") {
     const bm = Math.floor(currentState.total_break_secs / 60);
     breakStatsEl.textContent = `Breaks today: ${currentState.break_count} (${bm}m total)`;
     breakStatsEl.hidden = false;

@@ -1,27 +1,42 @@
 # EnoughWork
 
-A desktop app to set a daily screen time limit, track active screen time, and alert when the limit is reached. Built with [Tauri](https://tauri.app/) + vanilla HTML/CSS/JS.
+**Set a daily screen time limit. Get a fullscreen overlay when you've had enough.**
 
-## What it does
+EnoughWork is a daily limit enforcer — when you've been at the screen for 8 hours (or whatever you set), it covers all your monitors and tells you to stop. Simple.
 
-Tracks the time your screen is active during the day. When you hit your configured limit, a fullscreen overlay appears with two options — snooze or stop for the day. The app runs in the background via system tray and starts automatically on boot.
+Built with [Tauri](https://tauri.app/) (Rust + webview). Not Electron.
+
+## Why this exists
+
+Most screen time apps remind you to take breaks every X minutes. That's not the problem. The problem is looking up at 6 PM and realizing you've been at it for 10 hours straight.
+
+EnoughWork answers one question: **"Have I worked enough today?"** When the answer is yes, it makes you stop — fullscreen overlay on every monitor, hard to ignore. You can snooze or dismiss it, but you have to make that choice consciously.
 
 ## Philosophy
 
-EnoughWork isn't meant to lock you down. It's a gentle nudge to help you notice how long you've been at the screen, step away, and spend time on things that matter — rest, movement, family, hobbies. The overlay is easy to dismiss because the goal is awareness, not restriction. Better screen habits lead to better wellbeing.
+EnoughWork isn't meant to lock you down. It's a nudge to help you notice how long you've been at the screen, step away, and spend time on things that matter — rest, movement, family, hobbies. The overlay is easy to dismiss because the goal is awareness, not restriction. Better screen habits lead to better wellbeing.
 
 ## Features
 
 - **Daily screen time tracking** — counts seconds while the screen is active, pauses during sleep/hibernate
-- **Configurable limit** — set your daily limit in hours (default: 8h)
-- **Fullscreen alert overlay** — appears when limit is reached, stays on top of everything
-- **Snooze** — dismiss the alert for 30 minutes, reappears when snooze expires (can extend by snoozing again)
+- **Configurable limit** — set your daily limit in hours and minutes (default: 8h)
+- **Fullscreen alert overlay** — appears on all monitors when limit is reached, stays on top of everything
+- **Breaks** — take breaks with a circular countdown overlay, smart duration suggestion, extend/resume controls, and supercharging mode for extra rest
+- **Snooze** — extend working time in 30-minute increments (cumulative)
 - **Stop for today** — stop tracking entirely until the next day, with a resume option
+- **Quiet mode** — mini notification popup instead of fullscreen overlay (useful during meetings)
+- **Activity heatmap** — 30-day colored grid showing daily work and break totals
+- **Progress bar** — shows work progress with break segments at correct positions
+- **Fullscreen app detection** — adapts overlay behavior when games or presentations are running
+- **Star Drop animation** — subtle animated notification for fullscreen apps
+- **Multi-monitor support** — overlays appear on all connected monitors
 - **System tray** — minimizes to tray on close, tray icon with show/quit menu
 - **Auto-start on boot** — launches automatically when Windows starts
 - **Single instance** — prevents duplicate windows, focuses existing one
-- **Persistent state** — saves progress to disk, survives app restarts
+- **Persistent state** — saves progress to disk every 60 seconds, survives app restarts
 - **Daily reset** — timer resets at configurable time (default: midnight)
+
+See [docs/features.md](docs/features.md) for detailed feature documentation and behavior.
 
 ## Screenshots
 
@@ -74,13 +89,18 @@ This will:
 
 ```
 src/
-  index.html        # Main window UI
-  main.js           # Main window logic + settings
-  overlay.html      # Fullscreen limit-reached overlay
-  overlay.js        # Overlay logic (snooze/stop)
-  styles.css        # Shared styles
+  main.js              # Main window logic + settings + heatmap + overlays
+  styles.css           # All styles
+  window-utils.js      # Multi-monitor DPI-aware positioning
+  overlay.html/js      # Fullscreen limit-reached overlay
+  break-countdown.html/js  # Break countdown overlay with ring
+  notify.html          # Quiet mode notification popup
+  animation.html       # Star Drop animation
 src-tauri/src/
-  lib.rs            # App setup, tray, plugins, window management
-  commands.rs       # Tauri commands + background timer + settings
-  main.rs           # Binary entry point
+  lib.rs               # App setup, tray, plugins, window management
+  commands.rs          # Tauri commands + background timer + state + settings
+  main.rs              # Binary entry point
+docs/
+  features.md          # Detailed feature documentation
+  planning/            # Feature planning docs
 ```
