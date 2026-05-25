@@ -69,24 +69,22 @@ function render() {
   // Elapsed time - big
   $("#elapsed").textContent = formatTime(elapsed_secs);
 
-  // Progress bar: SVG-based segmented bar
+  // Progress bar: simple fill (no break segments for now)
+  const barEl = $("#progress-svg");
+  const svgNS = "http://www.w3.org/2000/svg";
   const elapsedPct = limit_secs > 0 ? Math.min((elapsed_secs / limit_secs) * 100, 100) : 0;
-
   const progressEl = $("#progress");
   progressEl.setAttribute("width", elapsedPct);
   progressEl.classList.toggle("over-limit", elapsed_secs >= limit_secs);
+  barEl.querySelectorAll(".progress-fill-seg").forEach(el => el.remove());
 
-  // Render break segments as SVG rects
-  const barEl = $("#progress-svg");
-  const svgNS = "http://www.w3.org/2000/svg";
+  // Render break segments
   const segments = currentState.break_segments || [];
-
   // Remove excess completed break rects (skip "live")
   barEl.querySelectorAll(".progress-break").forEach((el) => {
     if (el.dataset.seg === "live") return;
     if (parseInt(el.dataset.seg) >= segments.length) el.remove();
   });
-
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
     if (seg.duration < 60) continue; // skip breaks under 1 min
@@ -131,7 +129,7 @@ function render() {
     const bmr = bm % 60;
     el.dataset.breakLabel = bh > 0 ? `Break: ${bh}h ${String(bmr).padStart(2, "0")}m` : `Break: ${bm}m`;
   } else {
-    const live = $("#progress-svg").querySelector(`.progress-break[data-seg="live"]`);
+    const live = barEl.querySelector(`.progress-break[data-seg="live"]`);
     if (live) live.remove();
   }
 

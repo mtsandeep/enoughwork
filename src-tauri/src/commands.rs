@@ -283,9 +283,9 @@ pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
     if let Some(started) = state.break_started_at {
         let actual = (now_ts - started) as u64;
         state.total_break_secs += actual;
-        let active_at = state.active_secs;
+        let elapsed_at_start = state.elapsed_secs.saturating_sub(actual);
         state.break_segments.push(BreakSegment {
-            active_at_start: active_at,
+            active_at_start: elapsed_at_start,
             duration: actual,
         });
     }
