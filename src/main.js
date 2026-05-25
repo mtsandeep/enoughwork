@@ -65,11 +65,6 @@ function render() {
   // Elapsed time - big
   $("#elapsed").textContent = formatTime(elapsed_secs);
 
-  // Limit - smaller, below (no seconds)
-  const lh = Math.floor(limit_secs / 3600);
-  const lm = Math.floor((limit_secs % 3600) / 60);
-  $("#limit-text").textContent = `${lh}h ${String(lm).padStart(2, "0")}m`;
-
   // Progress bar
   const progressEl = $("#progress");
   progressEl.style.width = pct + "%";
@@ -529,7 +524,6 @@ function openBreakDurationEdit() {
 function closeBreakDurationEdit() {
   breakDurationEditing = false;
   $("#break-duration-display").hidden = false;
-  $("#break-duration-edit").hidden = false;
   $("#break-duration-edit").hidden = true;
   $("#break-duration-row").classList.remove("editing");
 }

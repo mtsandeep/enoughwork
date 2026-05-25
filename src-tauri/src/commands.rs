@@ -137,6 +137,7 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         state.status = "active".into();
         state.snooze_until = None;
         state.snooze_started_at = None;
+        state.total_snooze_secs = 0;
         state.quiet_overlay = false;
         state.break_until = None;
         state.break_started_at = None;
@@ -414,6 +415,8 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 state.status = "active".into();
                 state.snooze_until = None;
                 state.snooze_started_at = None;
+                state.total_snooze_secs = 0;
+                state.quiet_overlay = false;
                 state.break_until = None;
                 state.break_started_at = None;
                 state.break_duration_secs = 0;

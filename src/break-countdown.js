@@ -1,4 +1,4 @@
-const { emit } = window.__TAURI__.event;
+const { emit, listen } = window.__TAURI__.event;
 
 let acted = false;
 
@@ -10,11 +10,10 @@ document.getElementById("btn-resume").addEventListener("click", async () => {
 });
 
 document.getElementById("btn-extend").addEventListener("click", async () => {
-  if (acted) return; // prevent spam
+  if (acted) return;
   acted = true;
-  await emit("break-action", { action: "extend" });
-  // Re-allow after a beat so extend can be pressed again
-  setTimeout(() => { acted = false; }, 500);
+  emit("break-action", { action: "extend" });
+  setTimeout(() => { acted = false; }, 100);
 });
 
 // Listen for tick updates from main window
@@ -66,9 +65,16 @@ function renderTick({ remaining, total, elapsed_secs, ended, over_secs }) {
     container.classList.add("break-ended");
     acted = false;
   } else {
-    const m = Math.floor(remaining / 60);
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
     const s = remaining % 60;
-    timeEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    if (h > 0) {
+      timeEl.textContent = `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      timeEl.classList.add("has-hours");
+    } else {
+      timeEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      timeEl.classList.remove("has-hours");
+    }
     container.classList.remove("break-ended");
     titleEl.style.visibility = "hidden";
     superchargeEl.style.visibility = "hidden";
@@ -88,8 +94,6 @@ const initOverSecs = parseInt(params.get("over_secs")) || 0;
 if (initTotal > 0) {
   renderTick({ remaining: initRemaining, total: initTotal, elapsed_secs: initElapsedSecs, ended: initRemaining <= 0, over_secs: initOverSecs });
 }
-
-const { listen } = window.__TAURI__.event;
 
 listen("break-tick", (event) => {
   renderTick(event.payload);
