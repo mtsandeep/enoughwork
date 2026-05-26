@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EnoughWork — A gentle reminder to leave the screen behind</title>
+    <meta name="description" content="EnoughWork helps you notice when it's time to step away from the screen. Free, open source, no cloud, no tracking." />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body class="bg-white text-neutral-900 antialiased">
+    <div class="min-h-screen flex flex-col">
+
+      <!-- Hero -->
+      <section class="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
+        <div class="mb-6">
+          <img src="/logo.png" alt="EnoughWork" width="80" height="80" class="rounded-xl" />
+        </div>
+        <h1 class="text-5xl md:text-6xl font-bold tracking-tight mb-3">EnoughWork</h1>
+        <p class="text-lg md:text-xl text-neutral-500 mb-1">A gentle reminder to leave the screen behind.</p>
+        <p class="text-base text-neutral-400 mb-10">Built for people who keep saying "just 10 more minutes."</p>
+
+        <!-- Download tabs -->
+        <div class="w-full max-w-md mx-auto mb-6">
+          <div class="flex justify-center gap-1 mb-3 border-b border-neutral-200">
+            <button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-neutral-900 text-neutral-900 -mb-px transition-colors" data-tab="windows">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="inline -mt-0.5 mr-1"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              Windows
+            </button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-neutral-400 -mb-px transition-colors" data-tab="mac">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="inline -mt-0.5 mr-1"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              macOS
+            </button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-neutral-400 -mb-px transition-colors" data-tab="linux">
+              <svg width="16" height="16" viewBox="0 0 22 22" fill="currentColor" class="inline -mt-0.5 mr-1"><path d="M10.861 5.412c.042 .021 .076 .072 .126 .072 .046 0 .118 -.017 .122 -.063 .008 -.059 -.08 -.097 -.135 -.122 -.072 -.029 -.164 -.042 -.232 -.004 -.017 .008 -.034 .029 -.025 .046 .013 .055 .097 .046 .143 .072Zm-.922 .072c.051 0 .084 -.051 .126 -.072 .046 -.025 .131 -.017 .147 -.067 .008 -.017 -.008 -.038 -.025 -.046 -.067 -.038 -.16 -.025 -.232 .004 -.055 .025 -.143 .063 -.135 .122 .004 .042 .076 .063 .118 .059Zm9.31 11.739c-.152 -.168 -.223 -.488 -.303 -.829 -.076 -.341 -.164 -.707 -.442 -.943 -.055 -.046 -.109 -.088 -.168 -.122 -.055 -.034 -.114 -.063 -.173 -.084 .387 -1.149 .236 -2.295 -.156 -3.331 -.48 -1.267 -1.318 -2.375 -1.958 -3.133 -.72 -.905 -1.419 -1.764 -1.406 -3.032 .021 -1.933 .215 -5.524 -3.192 -5.529 -4.312 -.008 -3.234 4.354 -3.28 5.693 -.072 .985 -.269 1.76 -.947 2.724 -.796 .947 -1.916 2.476 -2.446 4.072 -.253 .754 -.371 1.52 -.261 2.244 -.274 .244 -.48 .619 -.699 .851 -.177 .181 -.434 .248 -.716 .349s-.589 .253 -.779 .611c-.088 .164 -.118 .341 -.118 .522 0 .164 .025 .333 .051 .497 .051 .341 .105 .661 .034 .876 -.219 .606 -.248 1.027 -.093 1.335 .16 .307 .48 .442 .846 .518 .728 .152 1.718 .114 2.497 .526 .834 .438 1.68 .594 2.354 .438 .488 -.109 .888 -.404 1.091 -.851 .526 -.004 1.107 -.227 2.034 -.278 .627 -.051 1.415 .223 2.32 .173 .025 .097 .059 .194 .105 .282v.004c.349 .703 1.002 1.023 1.697 .968 .699 -.055 1.436 -.463 2.034 -1.175 .573 -.691 1.516 -.977 2.143 -1.356 .312 -.189 .564 -.425 .585 -.771 .017 -.345 -.185 -.728 -.653 -1.251ZM10.983 3.896c.413 -.935 1.44 -.918 1.853 -.017 .274 .598 .152 1.301 -.181 1.701 -.067 -.034 -.248 -.109 -.531 -.206 .046 -.051 .131 -.114 .164 -.194 .202 -.497 -.008 -1.137 -.383 -1.149 -.307 -.021 -.585 .455 -.497 .968 -.173 -.084 -.396 -.147 -.547 -.185 -.042 -.291 -.013 -.615 .122 -.918Zm-1.714 -.484c.425 0 .876 .598 .804 1.411 -.147 .042 -.299 .105 -.429 .194 .051 -.375 -.139 -.846 -.404 -.825 -.354 .029 -.413 .893 -.076 1.183 .042 .034 .08 -.008 -.248 .232 -.657 -.615 -.442 -2.194 .354 -2.194Zm-.573 2.556c.261 -.194 .573 -.421 .594 -.442 .198 -.185 .568 -.598 1.175 -.598 .299 0 .657 .097 1.091 .375 .265 .173 .476 .185 .952 .392 .354 .147 .577 .408 .442 .766 -.109 .299 -.463 .606 -.956 .762 -.467 .152 -.834 .674 -1.608 .627 -.164 -.008 -.295 -.042 -.404 -.088 -.337 -.147 -.514 -.438 -.842 -.632 -.362 -.202 -.556 -.438 -.619 -.644 -.059 -.206 0 -.379 .177 -.518Zm.139 14.063c-.114 1.478 -1.848 1.448 -3.171 .758 -1.259 -.665 -2.888 -.274 -3.221 -.922 -.101 -.198 -.101 -.535 .109 -1.112v-.008c.101 -.32 .025 -.674 -.025 -1.006 -.051 -.328 -.076 -.632 .038 -.842 .147 -.282 .358 -.383 .623 -.476 .434 -.156 .497 -.143 .825 -.417 .232 -.24 .4 -.543 .602 -.758 .215 -.232 .421 -.341 .745 -.291 .341 .051 .636 .286 .922 .674l.825 1.499c.4 .838 1.815 2.038 1.726 2.901Zm-.059 -1.091c-.173 -.278 -.404 -.573 -.606 -.825 .299 0 .598 -.093 .703 -.375 .097 -.261 0 -.627 -.312 -1.048 -.568 -.766 -1.613 -1.368 -1.613 -1.368 -.568 -.354 -.888 -.787 -1.036 -1.259s-.126 -.981 -.013 -1.482c.219 -.964 .783 -1.903 1.145 -2.493 .097 -.072 .034 .135 -.366 .876 -.358 .678 -1.027 2.244 -.109 3.47 .025 -.872 .232 -1.76 .581 -2.59 .505 -1.154 1.571 -3.154 1.655 -4.745 .046 .034 .194 .135 .261 .173 .194 .114 .341 .282 .531 .434 .522 .421 1.2 .387 1.785 .051 .261 -.147 .472 -.316 .669 -.379 .417 -.131 .749 -.362 .939 -.632 .324 1.28 1.082 3.128 1.566 4.03 .257 .48 .771 1.495 .994 2.72 .139 -.004 .295 .017 .459 .059 .581 -1.503 -.493 -3.124 -.981 -3.575 -.198 -.194 -.206 -.278 -.109 -.274 .531 .472 1.229 1.419 1.482 2.484 .118 .488 .139 .998 .017 1.503 .691 .286 1.512 .754 1.293 1.465 -.093 -.004 -.135 0 -.177 0 .135 -.425 -.164 -.741 -.96 -1.099 -.825 -.362 -1.516 -.362 -1.613 .526 -.509 .177 -.771 .619 -.901 1.149 -.118 .472 -.152 1.04 -.185 1.68 -.021 .324 -.152 .758 -.286 1.221 -1.352 .964 -3.23 1.385 -4.813 .303Zm10.838 -.484c-.038 .707 -1.735 .838 -2.661 1.958 -.556 .661 -1.238 1.027 -1.836 1.074s-1.116 -.202 -1.419 -.813c-.198 -.467 -.101 -.973 .046 -1.528 .156 -.598 .387 -1.213 .417 -1.709 .034 -.64 .072 -1.2 .177 -1.629 .109 -.434 .278 -.724 .577 -.888 .013 -.008 .029 -.013 .042 -.021 .034 .556 .307 1.12 .792 1.242 .531 .139 1.293 -.316 1.617 -.686 .379 -.013 .661 -.038 .952 .215 .417 .358 .299 1.276 .72 1.752 .446 .488 .589 .821 .577 1.036ZM8.861 6.481c.084 .08 .198 .189 .337 .299 .278 .219 .665 .446 1.149 .446 .488 0 .947 -.248 1.339 -.455 .206 -.109 .459 -.295 .623 -.438s.248 -.265 .131 -.278 -.109 .109 -.253 .215c-.185 .135 -.408 .312 -.585 .413 -.312 .177 -.821 .429 -1.259 .429s-.787 -.202 -1.048 -.408c-.131 -.105 -.24 -.211 -.324 -.291 -.063 -.059 -.08 -.194 -.181 -.206 -.059 -.004 -.076 .156 .072 .274Z" stroke-width=".049"></path></svg>
+              Linux
+            </button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-neutral-400 -mb-px transition-colors" data-tab="github">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="inline -mt-0.5 mr-1"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              GitHub
+            </button>
+          </div>
+          <div class="tab-panel py-2" data-panel="windows" id="downloads-windows">
+            <div class="flex flex-col gap-3">
+              <a href="https://github.com/mtsandeep/enoughwork/releases/latest" class="flex items-center justify-center gap-3 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-medium hover:border-neutral-400 hover:bg-neutral-50 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download for Windows
+              </a>
+              <details class="mt-3">
+                <summary class="text-xs text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors text-center select-none">Installation notes</summary>
+                <p class="text-xs text-neutral-500 text-center mt-2">EnoughWork is open source but not code-signed. Windows SmartScreen may warn about an "unrecognized app" — click <em>More info</em> &rarr; <em>Run anyway</em> to proceed.</p>
+              </details>
+            </div>
+          </div>
+          <div class="tab-panel py-2 hidden" data-panel="mac" id="downloads-mac">
+            <div class="flex flex-col gap-3">
+              <a href="https://github.com/mtsandeep/enoughwork/releases/latest" class="flex items-center justify-center gap-3 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-medium hover:border-neutral-400 hover:bg-neutral-50 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download for macOS
+              </a>
+              <details class="mt-3">
+                <summary class="text-xs text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors text-center select-none">Installation notes</summary>
+                <div class="text-center mt-2">
+                  <p class="text-xs text-neutral-500">EnoughWork is open source but not notarized with Apple. To bypass Gatekeeper, run this in Terminal after installing:</p>
+                  <div class="mt-2 relative">
+                    <code class="block bg-neutral-100 rounded-lg px-4 py-2 pr-16 text-xs text-neutral-600 text-left font-mono">xattr -cr /Applications/EnoughWork.app</code>
+                    <button onclick="copyCmd(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 hover:text-neutral-700 transition-colors cursor-pointer">Copy</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div class="tab-panel py-2 hidden" data-panel="linux" id="downloads-linux">
+            <div class="flex flex-col gap-3">
+              <a href="https://github.com/mtsandeep/enoughwork/releases/latest" class="flex items-center justify-center gap-3 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-medium hover:border-neutral-400 hover:bg-neutral-50 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download for Linux
+              </a>
+            </div>
+          </div>
+          <div class="tab-panel py-2 hidden" data-panel="github">
+            <div class="flex flex-col items-center gap-2 py-2 text-sm">
+              <div><span class="text-neutral-400">Source code:</span> <a href="https://github.com/mtsandeep/enoughwork" class="text-neutral-700 hover:text-neutral-900 underline underline-offset-2 transition-colors">github.com/mtsandeep/enoughwork</a></div>
+              <div><span class="text-neutral-400">Releases:</span> <a href="https://github.com/mtsandeep/enoughwork/releases" class="text-neutral-700 hover:text-neutral-900 underline underline-offset-2 transition-colors">github.com/mtsandeep/enoughwork/releases</a></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-base text-neutral-400">Free &middot; Open source &middot; No cloud &middot; No tracking</p>
+      </section>
+
+      <!-- Screenshot Section -->
+      <section>
+        <div class="max-w-4xl mx-auto px-6 pt-0 pb-20 text-center">
+          <div class="flex justify-center gap-1 mb-6 border-b border-neutral-200">
+            <button class="ss-tab px-4 py-2 text-sm font-medium border-b-2 border-neutral-900 text-neutral-900 -mb-px transition-colors" data-ss="app">App</button>
+            <button class="ss-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-neutral-400 -mb-px transition-colors" data-ss="breaks">Break overlays</button>
+            <button class="ss-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-neutral-400 -mb-px transition-colors" data-ss="work">Work overlays</button>
+          </div>
+          <div class="ss-panel" data-ss="app">
+            <div class="grid md:grid-cols-3 gap-6">
+              <div>
+                <img src="/enoughwork-app.jpg" alt="EnoughWork dashboard" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Dashboard</p>
+              </div>
+              <div>
+                <img src="/enoughwork-take-break.jpg" alt="Take break picker" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Take a break</p>
+              </div>
+              <div>
+                <img src="/enoughwork-settings.jpg" alt="Settings panel" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Settings</p>
+              </div>
+            </div>
+          </div>
+          <div class="ss-panel hidden" data-ss="breaks">
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <img src="/enoughwork-break-overlay.jpg" alt="Break countdown overlay" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Break countdown</p>
+              </div>
+              <div>
+                <img src="/enoughwork-break-recharged-overlay.jpg" alt="Break recharged overlay" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Recharged!</p>
+              </div>
+            </div>
+          </div>
+          <div class="ss-panel hidden" data-ss="work">
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <img src="/enoughwork-overlay.jpg" alt="Fullscreen overlay when limit is reached" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Limit reached</p>
+              </div>
+              <div>
+                <img src="/enoughwork-mini-notifications.jpg" alt="Quiet mode notifications" class="w-full rounded-xl border border-neutral-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity" onclick="openLightbox(this)" />
+                <p class="mt-3 text-sm text-neutral-500">Quiet mode</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Philosophy -->
+      <section class="relative bg-neutral-50 overflow-hidden">
+        <div class="absolute inset-0 diagonal-lines"></div>
+        <div class="relative max-w-2xl mx-auto px-6 py-20 text-center">
+          <div class="mb-4">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="#ef4444" stroke="none" class="inline-block">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
+          <h2 class="text-2xl md:text-3xl font-bold tracking-tight mb-6">Not a lock. A nudge.</h2>
+          <p class="text-neutral-500 leading-relaxed mb-4">EnoughWork isn't designed to control you. There are no punishments, forced lockouts, productivity scores, streaks, or guilt systems. The goal is simple: help you notice when it's time to stop.</p>
+          <p class="text-neutral-500 leading-relaxed mb-6">The overlay is intentionally easy to dismiss because awareness matters more than restriction. Sometimes a small interruption is all you need to finally stand up, stretch, rest, or call it a day.</p>
+          <p class="text-neutral-400 text-sm italic">I built this because I kept working for hours without noticing. One task became another, and suddenly half the day was gone.</p>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section class="border-t border-neutral-100">
+        <div class="max-w-3xl mx-auto px-6 py-16">
+          <div class="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm text-neutral-500">
+            <span class="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Daily limit
+            </span>
+            <span class="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              Gentle overlay
+            </span>
+            <span class="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Multi-monitor
+            </span>
+            <span class="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              No cloud, no tracking
+            </span>
+            <span class="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-neutral-400"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              Open source
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="pb-8 text-center text-sm text-neutral-400">
+        <div class="flex items-center justify-center gap-4">
+            <a href="https://github.com/mtsandeep/enoughwork" class="inline-flex items-center gap-1.5 hover:text-neutral-600 transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              GitHub
+            </a>
+            <span>&middot;</span>
+            <span>Built with <a href="https://tauri.app/" class="hover:text-neutral-600 transition-colors">Tauri</a>
+            <a href="https://mtsandeep.com" class="hover:text-neutral-600 transition-colors">by mtsandeep</a>
+        </div>
+      </footer>
+
+    </div>
+
+    <!-- Lightbox modal -->
+    <div id="lightbox" class="fixed inset-0 z-50 bg-black/80 items-center justify-center hidden" onclick="closeLightbox(event)">
+      <button class="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none" onclick="closeLightbox(event)">&times;</button>
+      <img id="lightbox-img" src="" alt="" class="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl" />
+    </div>
+
+    <script>
+      function copyCmd(btn) {
+        const code = btn.previousElementSibling.textContent;
+        navigator.clipboard.writeText(code);
+        btn.textContent = 'Copied!';
+        btn.classList.add('text-neutral-600');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('text-neutral-600');
+        }, 5000);
+      }
+      function openLightbox(img) {
+        const lb = document.getElementById('lightbox');
+        document.getElementById('lightbox-img').src = img.src;
+        document.getElementById('lightbox-img').alt = img.alt;
+        lb.classList.remove('hidden');
+        lb.classList.add('flex');
+      }
+      function closeLightbox(e) {
+        if (e.target.tagName === 'IMG') return;
+        const lb = document.getElementById('lightbox');
+        lb.classList.add('hidden');
+        lb.classList.remove('flex');
+      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox(e);
+      });
+      // Screenshot tabs
+      document.querySelectorAll('.ss-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.ss-tab').forEach(b => {
+            b.classList.remove('border-neutral-900', 'text-neutral-900');
+            b.classList.add('border-transparent', 'text-neutral-400');
+          });
+          btn.classList.remove('border-transparent', 'text-neutral-400');
+          btn.classList.add('border-neutral-900', 'text-neutral-900');
+          document.querySelectorAll('.ss-panel').forEach(p => p.classList.add('hidden'));
+          document.querySelector(`.ss-panel[data-ss="${btn.dataset.ss}"]`).classList.remove('hidden');
+        });
+      });
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
