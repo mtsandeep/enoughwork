@@ -4,6 +4,10 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Heatmap now respects the configured daily reset time instead of always rolling over at midnight
+- Heatmap days and history update live when the effective day changes (no app restart needed)
+
 ## [0.1.5] - 2026-05-25
 
 ### Fixed

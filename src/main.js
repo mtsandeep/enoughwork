@@ -318,15 +318,28 @@ async function initHeatmap() {
   buildHeatmap();
 }
 
+let heatmapBuiltDate = null;
+
+// Returns the effective "today" date key, respecting the configured reset time.
+// Uses currentState.date from the Rust backend (computed via effective_date(reset_time)).
+// Falls back to raw calendar date if state isn't loaded yet.
+function effectiveToday() {
+  return currentState?.date || localDateKey(new Date());
+}
+
 function buildHeatmap() {
   const container = $("#heatmap");
   if (!container) return;
-  const today = new Date();
+  const todayKey = effectiveToday();
+  heatmapBuiltDate = todayKey;
+  // Parse the effective date to generate the 30-day window
+  const [y, m, d] = todayKey.split("-").map(Number);
+  const today = new Date(y, m - 1, d);
   let html = "";
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = localDateKey(d);
+    const dt = new Date(today);
+    dt.setDate(dt.getDate() - i);
+    const key = localDateKey(dt);
     html += `<div class="heatmap-square" data-date="${key}" data-today="${i === 0 ? "1" : "0"}"></div>`;
   }
   container.innerHTML = html;
@@ -336,6 +349,14 @@ function buildHeatmap() {
 
 function updateHeatmapColors() {
   if (!historyCache || !heatmapBuilt) return;
+
+  // If effective today changed since heatmap was built, rebuild with fresh history + dates
+  const todayKey = effectiveToday();
+  if (heatmapBuiltDate && heatmapBuiltDate !== todayKey) {
+    initHeatmap();
+    return;
+  }
+
   const squares = document.querySelectorAll(".heatmap-square");
   squares.forEach((sq) => {
     const key = sq.dataset.date;
