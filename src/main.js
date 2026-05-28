@@ -362,10 +362,11 @@ function updateHeatmapColors() {
     const key = sq.dataset.date;
     const isToday = sq.dataset.today === "1";
     const record = isToday
-      ? { active_secs: currentState?.active_secs || 0, break_secs: currentState?.total_break_secs || 0 }
-      : (historyCache[key] || { active_secs: 0, break_secs: 0 });
+      ? { active_secs: currentState?.active_secs || 0, break_secs: currentState?.total_break_secs || 0, elapsed_secs: currentState?.elapsed_secs || 0 }
+      : (historyCache[key] || { active_secs: 0, break_secs: 0, elapsed_secs: 0 });
     const secs = record.active_secs || 0;
     const breakSecs = record.break_secs || 0;
+    const elapsedSecs = record.elapsed_secs || 0;
     const hours = secs / 3600;
 
     sq.className = "heatmap-square";
@@ -383,8 +384,9 @@ function updateHeatmapColors() {
     const h = Math.floor(hours);
     const m = Math.floor((hours - h) * 60);
     sq.dataset.tooltipDate = key;
-    sq.dataset.tooltipTime = secs > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : "";
-    sq.dataset.tooltipBreak = breakSecs > 0 ? formatBreakMin(breakSecs) : "";
+    sq.dataset.tooltipTotal = secs > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : "";
+    sq.dataset.tooltipWork = elapsedSecs > 0 ? formatBreakMin(elapsedSecs) : "";
+    sq.dataset.tooltipBreak = breakSecs >= 60 ? formatBreakMin(breakSecs) : "";
     sq.dataset.tooltipLabel = secs > 0 ? (isToday ? "Today" : "Worked") : "No data";
   });
 }
@@ -405,12 +407,14 @@ if (heatmapEl && heatmapTooltip) {
     const sq = e.target.closest(".heatmap-square");
     if (!sq) return;
     const date = sq.dataset.tooltipDate;
-    const time = sq.dataset.tooltipTime;
+    const total = sq.dataset.tooltipTotal;
+    const work = sq.dataset.tooltipWork;
     const breakTime = sq.dataset.tooltipBreak;
     const label = sq.dataset.tooltipLabel;
     let html = `<div class="tt-date">${date}</div>`;
-    if (time) {
-      html += `<div class="tt-time">${time} work</div>`;
+    if (total) {
+      if (total !== work) html += `<div class="tt-time">${total} awake</div>`;
+      if (work) html += `<div class="tt-time">${work} work</div>`;
       if (breakTime) html += `<div class="tt-time" style="color:#0d9488">${breakTime} breaks</div>`;
     } else {
       html += `<div class="tt-label">${label}</div>`;

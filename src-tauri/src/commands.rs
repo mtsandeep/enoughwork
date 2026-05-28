@@ -69,6 +69,8 @@ impl Default for TimerState {
 pub struct DayRecord {
     pub active_secs: u64,
     pub break_secs: u64,
+    #[serde(default)]
+    pub elapsed_secs: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +144,7 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         let old_date = state.date.clone();
         let old_active = state.active_secs;
         let old_break = state.total_break_secs;
+        let old_elapsed = state.elapsed_secs;
         state.date = today;
         state.elapsed_secs = 0;
         state.active_secs = 0;
@@ -160,7 +163,7 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         drop(state);
         if !old_date.is_empty() && old_active > 0 {
             if let Ok(store) = app_handle.store("enoughwork-store.json") {
-                save_daily_history(&old_date, old_active, old_break, &store);
+                save_daily_history(&old_date, old_active, old_break, old_elapsed, &store);
             }
         }
         state = app_data.state.lock().unwrap();
@@ -372,14 +375,14 @@ fn load_daily_history(store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wr
             }
             // Fallback: old format was HashMap<String, u64> — migrate
             let old: HashMap<String, u64> = serde_json::from_value(v.clone()).ok()?;
-            Some(old.into_iter().map(|(k, secs)| (k, DayRecord { active_secs: secs, break_secs: 0 })).collect())
+            Some(old.into_iter().map(|(k, secs)| (k, DayRecord { active_secs: secs, break_secs: 0, elapsed_secs: 0 })).collect())
         })
         .unwrap_or_default()
 }
 
-fn save_daily_history(date: &str, active_secs: u64, break_secs: u64, store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) {
+fn save_daily_history(date: &str, active_secs: u64, break_secs: u64, elapsed_secs: u64, store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) {
     let mut history = load_daily_history(store);
-    history.insert(date.to_string(), DayRecord { active_secs, break_secs });
+    history.insert(date.to_string(), DayRecord { active_secs, break_secs, elapsed_secs });
     // Prune to last 30 days
     let mut dates: Vec<String> = history.keys().cloned().collect();
     dates.sort();
@@ -426,6 +429,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 let old_date = state.date.clone();
                 let old_active = state.active_secs;
                 let old_break = state.total_break_secs;
+                let old_elapsed = state.elapsed_secs;
                 state.date = today;
                 state.elapsed_secs = 0;
                 state.active_secs = 0;
@@ -444,7 +448,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 drop(state);
                 if !old_date.is_empty() && old_active > 0 {
                     if let Ok(store) = ah.store("enoughwork-store.json") {
-                        save_daily_history(&old_date, old_active, old_break, &store);
+                        save_daily_history(&old_date, old_active, old_break, old_elapsed, &store);
                     }
                 }
                 state = app_data.state.lock().unwrap();
