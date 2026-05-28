@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-05-28
+
 ### Changed
 - Heatmap tooltip now shows awake time, work time (matches progress bar), and breaks separately
 
