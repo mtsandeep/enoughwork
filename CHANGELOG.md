@@ -4,6 +4,13 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `tauri-plugin-positioner` for cross-platform notification window placement (fixes macOS positioning)
+
+### Changed
+- Mini notification popup now positions itself at bottom-right via positioner plugin on macOS/Linux (Windows keeps taskbar-aware positioning)
+- Debug "Show Overlay" button now respects the megaphone/quiet mode setting
+
 ## [0.1.7] - 2026-05-28
 
 ### Changed

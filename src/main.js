@@ -825,21 +825,24 @@ async function openNotifyPopup(targetMonitor) {
   const margin = 16;
 
   let posX = 100, posY = 100;
+  let hasWorkArea = false;
   try {
     const workArea = targetMonitor || await getMainWorkArea();
-    const pos = await bottomRightPosition(workArea, popupW, popupH, margin);
-    posX = pos.x;
-    posY = pos.y;
-  } catch (_) {
-    // fallback to default position
-  }
+    if (workArea) {
+      const pos = await bottomRightPosition(workArea, popupW, popupH, margin);
+      posX = pos.x;
+      posY = pos.y;
+      hasWorkArea = true;
+    }
+  } catch (_) {}
 
   notifyWindow = new WebviewWindow("notify-0", {
-    url: "src/notify.html",
+    url: hasWorkArea ? "src/notify.html" : "src/notify.html?selfpos=1",
     width: popupW,
     height: popupH,
     x: posX,
     y: posY,
+    visible: hasWorkArea,
     decorations: false,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -1044,16 +1047,8 @@ listen("close-overlay", async () => {
   await refreshState();
 });
 
-// Debug: show overlay
-$("#dbg-show-overlay").addEventListener("click", async () => {
-  const fs = await invoke("is_fullscreen_app_running");
-  const monitor = await invoke("get_foreground_monitor");
-  if (fs) {
-    await openAnimatedNotification();
-  } else {
-    await openFullscreenOverlay();
-  }
-});
+// Debug: show overlay (respects megaphone/quiet setting)
+$("#dbg-show-overlay").addEventListener("click", () => openOverlay());
 
 // Debug: set elapsed to limit
 $("#dbg-set-limit").addEventListener("click", async () => {
@@ -1090,8 +1085,7 @@ $("#dbg-show-anim").addEventListener("click", async () => {
     fullscreen: false,
     width: 800,
     height: 500,
-    x: 200,
-    y: 200,
+    center: true,
     transparent: true,
     decorations: false,
     alwaysOnTop: true,

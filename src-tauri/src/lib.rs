@@ -24,6 +24,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
             // Load saved state from store
             let store = app.store("enoughwork-store.json")?;
