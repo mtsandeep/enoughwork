@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-06-14
+
 ### Added
 - Events & Scheduled Breaks — schedule future reminders and timed breaks; they appear as markers on the progress bar and trigger a reminder overlay or break countdown at the scheduled time
 - Recurring events & breaks — repeat on selected weekdays (clock-time only); triggers fire only while the timer is running, so missed times while the laptop was off are not backfilled
