@@ -1,4 +1,5 @@
 import { computePosition, flip, shift, offset as floatingOffset } from "@floating-ui/dom";
+import { load } from "@tauri-apps/plugin-store";
 
 const { invoke } = window.__TAURI__.core;
 const { listen, emit } = window.__TAURI__.event;
@@ -700,6 +701,7 @@ $("#btn-start-break").addEventListener("click", async () => {
 let overlayWindows = [];
 let animWindow = null;
 let notifyWindow = null;
+let updateNotifyWindow = null;
 let animSafetyTimeout = null;
 
 async function closeAllOverlays() {
@@ -1107,6 +1109,65 @@ setInterval(refreshState, 1000);
 // ===== Auto Update =====
 let pendingUpdate = null;
 
+// Remember which version the user dismissed with "Later" so it won't pop up again.
+async function getDismissedUpdateVersion() {
+  try {
+    const store = await load("enoughwork-store.json");
+    return (await store.get("dismissed_update_version")) || "";
+  } catch {
+    return "";
+  }
+}
+
+async function setDismissedUpdateVersion(version) {
+  try {
+    const store = await load("enoughwork-store.json");
+    await store.set("dismissed_update_version", version);
+    await store.save();
+  } catch {}
+}
+
+// Open the small "Update Available" popup (mirrors openNotifyPopup's positioning).
+async function openUpdateNotifyPopup(version) {
+  if (updateNotifyWindow) return; // already open
+
+  const popupW = 300;
+  const popupH = 160;
+  const margin = 16;
+
+  let posX = 100, posY = 100;
+  let hasWorkArea = false;
+  try {
+    const workArea = await getMainWorkArea();
+    if (workArea) {
+      const pos = await bottomRightPosition(workArea, popupW, popupH, margin);
+      posX = pos.x;
+      posY = pos.y;
+      hasWorkArea = true;
+    }
+  } catch (_) {}
+
+  updateNotifyWindow = new WebviewWindow("update-notify-0", {
+    url: hasWorkArea
+      ? `src/update-notify.html?v=${encodeURIComponent(version)}`
+      : `src/update-notify.html?v=${encodeURIComponent(version)}&selfpos=1`,
+    width: popupW,
+    height: popupH,
+    x: posX,
+    y: posY,
+    visible: hasWorkArea,
+    decorations: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    title: "EnoughWork",
+  });
+
+  updateNotifyWindow.once("tauri://destroyed", () => {
+    updateNotifyWindow = null;
+  });
+}
+
 async function checkForUpdate(showStatus = false) {
   const statusEl = $("#update-status");
   try {
@@ -1126,6 +1187,12 @@ async function checkForUpdate(showStatus = false) {
 
       if (showStatus && statusEl) {
         renderUpdateStatus(statusEl, "available", update.version);
+      }
+
+      // Proactive popup (unless this version was already dismissed)
+      const dismissed = await getDismissedUpdateVersion();
+      if (update.version !== dismissed) {
+        openUpdateNotifyPopup(update.version);
       }
     } else {
       pendingUpdate = null;
@@ -1254,4 +1321,18 @@ function stopAutoUpdate() {
     checkForUpdate(false);
     startAutoUpdate();
   }
+
+  // Update popup actions
+  listen("update-dismiss", async () => {
+    if (pendingUpdate) await setDismissedUpdateVersion(pendingUpdate.version);
+    if (updateNotifyWindow) {
+      try { await updateNotifyWindow.close(); } catch {}
+      updateNotifyWindow = null;
+    }
+  });
+
+  listen("update-download", async () => {
+    // pendingUpdate already set by checkForUpdate(); popup shows its own "Downloading..."
+    downloadAndUpdate(null);
+  });
 })();

@@ -6,6 +6,7 @@ All notable changes to EnoughWork will be documented in this file.
 
 ### Added
 - `tauri-plugin-positioner` for cross-platform notification window placement (fixes macOS positioning)
+- Update-available popup notification when a new version is found (dismissed versions remembered per-version)
 
 ### Changed
 - Mini notification popup now positions itself at bottom-right via positioner plugin on macOS/Linux (Windows keeps taskbar-aware positioning)
