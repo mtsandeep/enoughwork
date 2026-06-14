@@ -222,9 +222,28 @@
         </div>
       </div>
 
+      <div class="event-field" id="event-recurring-field" hidden>
+        <div class="settings-row">
+          <span class="event-field-label">Repeat</span>
+          <label class="toggle">
+            <input type="checkbox" id="event-recurring-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="event-day-picks" id="event-day-picks" hidden>
+          <button class="event-day-btn" data-day="1">Mon</button>
+          <button class="event-day-btn" data-day="2">Tue</button>
+          <button class="event-day-btn" data-day="3">Wed</button>
+          <button class="event-day-btn" data-day="4">Thu</button>
+          <button class="event-day-btn" data-day="5">Fri</button>
+          <button class="event-day-btn" data-day="6">Sat</button>
+          <button class="event-day-btn" data-day="0">Sun</button>
+        </div>
+      </div>
+
       <div class="event-add-actions">
         <button class="btn" id="event-add-cancel">Cancel</button>
-        <button class="btn btn-break" id="event-add-confirm">Schedule</button>
+        <button class="btn btn-primary" id="event-add-confirm">Schedule</button>
       </div>
     </div>
   </div>

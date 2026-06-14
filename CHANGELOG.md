@@ -6,6 +6,7 @@ All notable changes to EnoughWork will be documented in this file.
 
 ### Added
 - Events & Scheduled Breaks — schedule future reminders and timed breaks; they appear as markers on the progress bar and trigger a reminder overlay or break countdown at the scheduled time
+- Recurring events & breaks — repeat on selected weekdays (clock-time only); triggers fire only while the timer is running, so missed times while the laptop was off are not backfilled
 - `tauri-plugin-positioner` for cross-platform notification window placement (fixes macOS positioning)
 - Update-available popup notification when a new version is found (dismissed versions remembered per-version)
 

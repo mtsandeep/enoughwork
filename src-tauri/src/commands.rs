@@ -1,4 +1,4 @@
-use chrono::Timelike;
+use chrono::{Datelike, Timelike};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -25,6 +25,12 @@ pub struct ScheduledEvent {
     pub snoozed_until: Option<i64>,    // snoozed reminder re-trigger time
     #[serde(default)]
     pub elapsed_at_trigger: Option<u64>, // elapsed_secs captured when fired (for bar segment)
+    #[serde(default)]
+    pub recurring_days: Vec<u8>,       // weekdays 0=Sun..6=Sat that this recurs on (empty = one-time)
+    #[serde(default)]
+    pub recurred_today: bool,          // recurring: already fired this calendar day
+    #[serde(default)]
+    pub trigger_minute: Option<u32>,   // recurring: minute-of-day (HH*60+MM) to recompute trigger_at daily
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -149,6 +155,36 @@ fn effective_date(reset_time: &str) -> String {
     }
 }
 
+/// On a new effective day: drop one-time events, keep recurring ones and
+/// re-arm them for today. Recurring events whose weekday isn't scheduled today
+/// are left dormant (triggered=true) so they never fire; scheduled ones get
+/// trigger_at recomputed to today's HH:MM and triggered=false.
+fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
+    let now = chrono::Local::now();
+    let today_weekday = now.weekday().num_days_from_sunday() as u8;
+    events.retain(|e| !e.recurring_days.is_empty());
+    for ev in events.iter_mut() {
+        // Reset daily state
+        ev.triggered = true; // dormant until re-armed below
+        ev.recurred_today = false;
+        ev.snoozed_until = None;
+        ev.elapsed_at_trigger = None;
+
+        if !ev.recurring_days.contains(&today_weekday) {
+            continue; // not scheduled today → stays dormant
+        }
+        // Recompute trigger_at to today's HH:MM
+        if let Some(min_of_day) = ev.trigger_minute {
+            let h = min_of_day / 60;
+            let m = min_of_day % 60;
+            if let Some(t) = now.with_hour(h).and_then(|t| t.with_minute(m)).and_then(|t| t.with_second(0)) {
+                ev.trigger_at = t.timestamp();
+                ev.triggered = false;
+            }
+        }
+    }
+}
+
 pub struct AppData {
     pub state: Mutex<TimerState>,
     pub last_save: Mutex<Instant>,
@@ -182,8 +218,7 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         state.break_count = 0;
         state.last_break_ended_at = None;
         state.break_segments.clear();
-        state.events.clear();
-        state.next_event_id = 1;
+        rollover_events_for_new_day(&mut state.events);
         drop(state);
         if !old_date.is_empty() && old_active > 0 {
             if let Ok(store) = app_handle.store("enoughwork-store.json") {
@@ -382,12 +417,22 @@ pub fn create_event(
     trigger_at: i64,
     duration_secs: u64,
     overlay_type: String,
+    recurring_days: Vec<u8>,
     app_handle: tauri::AppHandle,
 ) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
     let id = state.next_event_id;
     state.next_event_id += 1;
+    // For recurring events, capture the minute-of-day for daily recomputation
+    let trigger_minute = if !recurring_days.is_empty() {
+        let dt = chrono::DateTime::from_timestamp(trigger_at, 0)
+            .map(|t| t.with_timezone(&chrono::Local))
+            .map(|t| t.hour() as u32 * 60 + t.minute() as u32);
+        dt
+    } else {
+        None
+    };
     state.events.push(ScheduledEvent {
         id,
         event_type,
@@ -398,6 +443,9 @@ pub fn create_event(
         triggered: false,
         snoozed_until: None,
         elapsed_at_trigger: None,
+        recurring_days,
+        recurred_today: false,
+        trigger_minute,
     });
     state.clone()
 }
@@ -410,6 +458,7 @@ pub fn update_event(
     trigger_at: i64,
     duration_secs: u64,
     overlay_type: String,
+    recurring_days: Vec<u8>,
     app_handle: tauri::AppHandle,
 ) -> TimerState {
     let app_data = app_handle.state::<AppData>();
@@ -420,8 +469,18 @@ pub fn update_event(
         ev.trigger_at = trigger_at;
         ev.duration_secs = duration_secs;
         ev.overlay_type = overlay_type;
-        // Editing resets trigger/snooze state if it was snoozed
+        ev.recurring_days = recurring_days.clone();
+        ev.trigger_minute = if !recurring_days.is_empty() {
+            chrono::DateTime::from_timestamp(trigger_at, 0)
+                .map(|t| t.with_timezone(&chrono::Local))
+                .map(|t| t.hour() as u32 * 60 + t.minute() as u32)
+        } else {
+            None
+        };
+        // Editing resets daily trigger state
         ev.snoozed_until = None;
+        ev.recurred_today = false;
+        ev.triggered = false;
     }
     state.clone()
 }
@@ -452,6 +511,7 @@ pub fn snooze_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
     let now_ts = chrono::Local::now().timestamp();
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
         ev.triggered = false;
+        ev.recurred_today = false; // allow the snoozed re-fire
         ev.snoozed_until = Some(now_ts + 300); // 5 minutes
     }
     state.clone()
@@ -551,8 +611,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 state.break_count = 0;
                 state.last_break_ended_at = None;
                 state.break_segments.clear();
-                state.events.clear();
-                state.next_event_id = 1;
+                rollover_events_for_new_day(&mut state.events);
                 drop(state);
                 if !old_date.is_empty() && old_active > 0 {
                     if let Ok(store) = ah.store("enoughwork-store.json") {
@@ -602,13 +661,42 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
             }
 
             // Scheduled events: fire any due event.
-            // An event is "due" when trigger_at passes. Once it has passed but the
-            // user snoozed, only the snoozed_until timestamp can re-fire it — the
-            // original trigger_at no longer counts (prevents immediate re-triggering).
+            // - One-time: due when trigger_at passes. After snooze, only snoozed_until re-fires.
+            // - Recurring: due only within a 60s window after trigger_at, and only once per day.
+            //   If the laptop was off past the window, it never fires (no backfill).
             let now_ts = chrono::Local::now().timestamp();
             let elapsed_now = state.elapsed_secs;
+            const RECUR_WINDOW_SECS: i64 = 60;
             let mut fired_events: Vec<ScheduledEvent> = Vec::new();
             for ev in state.events.iter_mut() {
+                let is_recurring = !ev.recurring_days.is_empty();
+
+                if is_recurring {
+                    // Already fired today (or dormant for non-scheduled weekday)
+                    if ev.recurred_today || ev.triggered {
+                        continue;
+                    }
+                    // Snoozed recurring: fire on snoozed_until
+                    if let Some(s) = ev.snoozed_until {
+                        if s <= now_ts {
+                            ev.recurred_today = true;
+                            ev.snoozed_until = None;
+                            ev.elapsed_at_trigger = Some(elapsed_now);
+                            fired_events.push(ev.clone());
+                        }
+                        continue;
+                    }
+                    // Windowed due check — only fire if we're within the window
+                    if ev.trigger_at <= now_ts && now_ts < ev.trigger_at + RECUR_WINDOW_SECS {
+                        ev.recurred_today = true;
+                        ev.elapsed_at_trigger = Some(elapsed_now);
+                        fired_events.push(ev.clone());
+                    }
+                    // If now_ts >= trigger_at + WINDOW we missed it → never fires today
+                    continue;
+                }
+
+                // One-time event
                 if ev.triggered {
                     continue;
                 }

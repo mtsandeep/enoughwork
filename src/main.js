@@ -348,6 +348,19 @@ function formatClock(unixSecs) {
   return `${h}:${m}${ampm}`;
 }
 
+// Summarize recurring weekdays into a compact label, e.g. "Daily", "Mon-Fri", "Mon, Wed, Fri"
+function formatRecurringDays(days) {
+  const arr = (days || []).slice().sort((a, b) => a - b);
+  if (arr.length === 0) return "";
+  if (arr.length === 7) return "Daily";
+  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Mon-Fri weekday run
+  const weekday = [1, 2, 3, 4, 5];
+  const isWeekday = weekday.every(d => arr.includes(d)) && arr.length === 5;
+  if (isWeekday) return "Mon-Fri";
+  return arr.map(d => names[d]).join(", ");
+}
+
 // ===== Break Overlay Window =====
 let breakOverlayWindows = [];
 let breakOverlayId = 0;
@@ -840,6 +853,8 @@ let evtBreakMin = 15;
 let evtTimeMode = "clock";           // "clock" (at HH:MM) | "relative" (in Xh Ym)
 let evtRelMin = 5;                   // minutes from now (relative mode)
 let evtRelEditing = false;           // relative time manual-edit mode
+let evtRecurring = false;            // repeat daily toggle
+let evtRecurDays = new Set();        // selected weekdays (0=Sun..6=Sat)
 let editingConfirmMode = false;      // true when the form is editing an existing event
 let eventsEditingId = null;          // id of the event being edited
 
@@ -860,6 +875,9 @@ function resetEventForm() {
   evtRelMin = 30;
   updateEventRelDisplay();
   closeEventRelEdit();
+  evtRecurring = false;
+  evtRecurDays = new Set();
+  $("#event-recurring-toggle").checked = false;
   applyEventFormState();
 }
 
@@ -885,6 +903,13 @@ function applyEventFormState() {
   $("#event-time-clock").hidden = !isClock;
   $("#event-time-relative").hidden = isClock;
   $("#event-mode-btn").textContent = isClock ? "in Xh Ym" : "at HH:MM";
+  // recurring field only available in clock mode
+  $("#event-recurring-field").hidden = !isClock;
+  $("#event-day-picks").hidden = !isClock || !evtRecurring;
+  $("#event-recurring-toggle").checked = evtRecurring;
+  document.querySelectorAll("#event-day-picks .event-day-btn").forEach(b => {
+    b.classList.toggle("active", evtRecurDays.has(parseInt(b.dataset.day)));
+  });
 }
 
 function computeEventTriggerAt() {
@@ -1011,6 +1036,25 @@ document.querySelectorAll("#event-overlay-toggle .event-pill-btn").forEach(b => 
   });
 });
 
+$("#event-recurring-toggle").addEventListener("change", (e) => {
+  evtRecurring = e.target.checked;
+  // Default to weekdays if turning on with nothing selected
+  if (evtRecurring && evtRecurDays.size === 0) {
+    evtRecurDays = new Set([1, 2, 3, 4, 5]);
+  }
+  if (!evtRecurring) evtRecurDays = new Set();
+  applyEventFormState();
+});
+
+document.querySelectorAll("#event-day-picks .event-day-btn").forEach(b => {
+  b.addEventListener("click", () => {
+    const day = parseInt(b.dataset.day);
+    if (evtRecurDays.has(day)) evtRecurDays.delete(day);
+    else evtRecurDays.add(day);
+    applyEventFormState();
+  });
+});
+
 document.querySelectorAll("#event-break-picks .break-quick-btn").forEach(b => {
   b.addEventListener("click", () => {
     evtBreakMin = parseInt(b.dataset.min);
@@ -1030,12 +1074,17 @@ $("#event-add-confirm").addEventListener("click", async () => {
     $("#event-title-input").focus();
     return;
   }
+  // Recurring only applies in clock mode with the toggle on
+  const recurringDays = (evtTimeMode === "clock" && evtRecurring)
+    ? Array.from(evtRecurDays)
+    : [];
   const payload = {
     eventType: evtType,
     title: evtType === "reminder" ? title : "",
     triggerAt: trigger_at,
     durationSecs: evtType === "break" ? evtBreakMin * 60 : 0,
     overlayType: evtOverlay,
+    recurringDays,
   };
   if (editingConfirmMode && eventsEditingId != null) {
     currentState = await invoke("update_event", { id: eventsEditingId, ...payload });
@@ -1128,14 +1177,19 @@ function renderEventsList() {
   const now = Math.floor(Date.now() / 1000);
   list.innerHTML = events.map(ev => {
     const isBreak = ev.event_type === "break";
+    const isRecurring = (ev.recurring_days || []).length > 0;
     let stateClass = "";
     if (ev.triggered) stateClass = "event-row-triggered";
     else if (ev.snoozed_until) stateClass = "event-row-snoozed";
     const dotClass = isBreak ? "break-dot" : "" + (ev.triggered ? " triggered-dot" : "");
     const title = isBreak ? `Break (${Math.round(ev.duration_secs / 60)}m)` : (ev.title || "Reminder");
     const meta = eventMetaText(ev, now);
+    const recurLabel = isRecurring ? formatRecurringDays(ev.recurring_days) : "";
     const badgeText = isBreak ? "Break" : (ev.overlay_type === "mini" ? "Mini" : "Fullscreen");
     const badgeClass = isBreak ? "event-badge-break" : (ev.overlay_type === "mini" ? "event-badge-mini" : "event-badge-fullscreen");
+    const recurBadge = isRecurring
+      ? `<span class="event-badge event-badge-recurring" title="Recurring">${recurLabel}</span>`
+      : "";
     const editIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const trashIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
     return `
@@ -1143,7 +1197,7 @@ function renderEventsList() {
         <div class="event-row-dot ${dotClass}"></div>
         <div class="event-row-info">
           <div class="event-row-title">${escapeHtml(title)}</div>
-          <div class="event-row-meta"><span class="event-row-meta-text">${meta}</span><span class="event-badge ${badgeClass}">${badgeText}</span></div>
+          <div class="event-row-meta"><span class="event-row-meta-text">${meta}</span><span class="event-badge ${badgeClass}">${badgeText}</span>${recurBadge}</div>
         </div>
         <div class="event-row-actions">
           <button class="event-row-btn" data-action="edit" title="Edit">${editIcon}</button>
@@ -1177,8 +1231,12 @@ function renderEventsList() {
       evtRelMin = 30;
       updateEventRelDisplay();
       closeEventRelEdit();
-      eventsPage.hidden = true;
+      // Load recurring state
+      const days = ev.recurring_days || [];
+      evtRecurring = days.length > 0;
+      evtRecurDays = new Set(days);
       applyEventFormState();
+      eventsPage.hidden = true;
       evtPanel.hidden = false;
       // Swap confirm handler to update mode
       editingConfirmMode = true;

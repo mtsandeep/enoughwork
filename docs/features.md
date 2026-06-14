@@ -68,6 +68,52 @@ If you want breaks to be excluded from the limit, you can increase your limit to
 
 ---
 
+## Events & Scheduled Breaks
+
+Schedule future reminders and timed breaks. Events appear as amber markers on the progress bar and trigger at their scheduled time.
+
+### Creating events
+
+Click the **`+` icon** next to "Take Break" to open the scheduler, or open the **events list** (calendar icon in the top bar) and use "Add Reminder" or "Add Scheduled Break".
+
+- **Reminder** — a titled notification that fires at a chosen time. Choose fullscreen or mini popup.
+- **Scheduled Break** — a timed break that starts automatically at the chosen time, using the same countdown overlay as manual breaks.
+
+### Time options
+
+- **At HH:MM** — a specific clock time today (rolls to tomorrow if already past)
+- **In Xh Ym** — relative to now, using a `- 0h 30m +` stepper with 30-minute snap and click-to-edit
+
+### Recurring (clock-time only)
+
+When using a clock time, toggle **Repeat** and select weekdays. Recurring events:
+- Survive the daily reset and re-fire on selected days
+- **Fire only while the timer is running** — if the laptop was off at the scheduled time and you open later, the event does not backfill (e.g., a 1pm reminder missed because the laptop was off stays silent)
+- Show a recurring badge in the events list ("Daily", "Mon-Fri", or the specific days)
+
+### Triggers
+
+- **Reminder** → fullscreen overlay on all monitors (or mini popup) with OK and Snooze 5m. Snoozing reschedules to +5 minutes without changing the original time shown in the list.
+- **Scheduled Break** → starts the break countdown automatically.
+
+### Progress bar markers
+
+- **Upcoming** events → thin amber markers at their estimated position (where the fill will be when they fire)
+- **Triggered** events → amber segments at the elapsed time when they fired
+- **Out of range** (before the bar start or beyond the limit) → `+N` overflow badges flank the bar
+
+Hover any marker for the title and time.
+
+### Events list
+
+The calendar icon opens today's events with a live countdown, type badge (Fullscreen/Mini/Break), recurring badge, and edit/remove actions.
+
+### Important
+
+Events do **not** pause or affect the work timer. They are independent nudges. Scheduled breaks, like manual breaks, do count toward your daily limit (see Breaks section).
+
+---
+
 ## Snooze
 
 When the limit is reached, you can **snooze for 30 minutes** to extend your working time.

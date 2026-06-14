@@ -311,6 +311,17 @@ body {
   border-color: var(--danger);
 }
 
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
 /* ===== Snooze Bar ===== */
 .snooze-bar {
   width: 100%;
@@ -1259,9 +1270,9 @@ body {
   flex-shrink: 0;
 }
 .event-add-btn:hover {
-  border-color: #0d9488;
-  color: #0d9488;
-  background: #f0fdfa;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
   border-style: solid;
 }
 
@@ -1407,6 +1418,40 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.event-day-picks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.event-day-picks[hidden] {
+  display: none;
+}
+.event-day-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s;
+  font-family: inherit;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.event-day-btn:hover {
+  border-color: var(--accent);
+}
+.event-day-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
 }
 
 .event-pill-row {
@@ -1602,6 +1647,13 @@ body {
   color: #0f766e;
   background: #ccfbf1;
   border-color: #99f6e4;
+}
+.event-badge-recurring {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .event-row-meta {
   font-size: 12px;

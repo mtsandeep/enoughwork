@@ -22,6 +22,7 @@ EnoughWork isn't meant to lock you down. It's a nudge to help you notice how lon
 - **Configurable limit** — set your daily limit in hours and minutes (default: 8h)
 - **Fullscreen alert overlay** — appears on all monitors when limit is reached, stays on top of everything
 - **Breaks** — take breaks with a circular countdown overlay, smart duration suggestion, extend/resume controls, and supercharging mode for extra rest
+- **Events & scheduled breaks** — schedule reminders and timed breaks by clock time or "Xh Ym from now"; appear as markers on the progress bar and trigger at the scheduled time, with optional weekday recurrence
 - **Snooze** — extend working time in 30-minute increments (cumulative)
 - **Stop for today** — stop tracking entirely until the next day, with a resume option
 - **Quiet mode** — mini notification popup instead of fullscreen overlay (useful during meetings)
@@ -112,13 +113,15 @@ src/
   window-utils.js      # Multi-monitor DPI-aware positioning
   overlay.html/js      # Fullscreen limit-reached overlay
   break-countdown.html/js  # Break countdown overlay with ring
+  event-notify.html/js # Scheduled reminder overlay (fullscreen + mini)
   notify.html          # Quiet mode notification popup
   animation.html       # Star Drop animation
 src-tauri/src/
   lib.rs               # App setup, tray, plugins, window management
-  commands.rs          # Tauri commands + background timer + state + settings
+  commands.rs          # Tauri commands + background timer + state + settings + events
   main.rs              # Binary entry point
 docs/
   features.md          # Detailed feature documentation
+  events-reminders.md  # Events & scheduled breaks implementation
   planning/            # Feature planning docs
 ```
