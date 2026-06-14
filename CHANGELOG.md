@@ -5,6 +5,7 @@ All notable changes to EnoughWork will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Events & Scheduled Breaks — schedule future reminders and timed breaks; they appear as markers on the progress bar and trigger a reminder overlay or break countdown at the scheduled time
 - `tauri-plugin-positioner` for cross-platform notification window placement (fixes macOS positioning)
 - Update-available popup notification when a new version is found (dismissed versions remembered per-version)
 

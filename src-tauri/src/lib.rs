@@ -119,6 +119,11 @@ pub fn run() {
             commands::resume_from_break,
             commands::extend_break,
             commands::suggest_break,
+            commands::create_event,
+            commands::update_event,
+            commands::delete_event,
+            commands::dismiss_event,
+            commands::snooze_event,
             commands::get_foreground_monitor,
             commands::get_main_work_area,
         ])

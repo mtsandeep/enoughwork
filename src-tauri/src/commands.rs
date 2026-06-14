@@ -13,6 +13,21 @@ pub struct BreakSegment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScheduledEvent {
+    pub id: u32,
+    pub event_type: String,            // "break" or "reminder"
+    pub title: String,                 // reminder title (empty for breaks)
+    pub trigger_at: i64,               // unix timestamp
+    pub duration_secs: u64,            // break duration (0 for reminders)
+    pub overlay_type: String,          // "fullscreen" or "mini" (reminders only)
+    pub triggered: bool,
+    #[serde(default)]
+    pub snoozed_until: Option<i64>,    // snoozed reminder re-trigger time
+    #[serde(default)]
+    pub elapsed_at_trigger: Option<u64>, // elapsed_secs captured when fired (for bar segment)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimerState {
     pub date: String,
     pub elapsed_secs: u64,
@@ -40,6 +55,11 @@ pub struct TimerState {
     pub last_break_ended_at: Option<i64>,
     #[serde(default)]
     pub break_segments: Vec<BreakSegment>,
+    // Scheduled events
+    #[serde(default)]
+    pub events: Vec<ScheduledEvent>,
+    #[serde(default)]
+    pub next_event_id: u32,
 }
 
 impl Default for TimerState {
@@ -61,6 +81,8 @@ impl Default for TimerState {
             break_count: 0,
             last_break_ended_at: None,
             break_segments: Vec::new(),
+            events: Vec::new(),
+            next_event_id: 1,
         }
     }
 }
@@ -160,6 +182,8 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
         state.break_count = 0;
         state.last_break_ended_at = None;
         state.break_segments.clear();
+        state.events.clear();
+        state.next_event_id = 1;
         drop(state);
         if !old_date.is_empty() && old_active > 0 {
             if let Ok(store) = app_handle.store("enoughwork-store.json") {
@@ -351,6 +375,88 @@ pub fn suggest_break(app_handle: tauri::AppHandle) -> BreakSuggestion {
     BreakSuggestion { suggested_min, work_min }
 }
 
+#[tauri::command]
+pub fn create_event(
+    event_type: String,
+    title: String,
+    trigger_at: i64,
+    duration_secs: u64,
+    overlay_type: String,
+    app_handle: tauri::AppHandle,
+) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let id = state.next_event_id;
+    state.next_event_id += 1;
+    state.events.push(ScheduledEvent {
+        id,
+        event_type,
+        title,
+        trigger_at,
+        duration_secs,
+        overlay_type,
+        triggered: false,
+        snoozed_until: None,
+        elapsed_at_trigger: None,
+    });
+    state.clone()
+}
+
+#[tauri::command]
+pub fn update_event(
+    id: u32,
+    event_type: String,
+    title: String,
+    trigger_at: i64,
+    duration_secs: u64,
+    overlay_type: String,
+    app_handle: tauri::AppHandle,
+) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        ev.event_type = event_type;
+        ev.title = title;
+        ev.trigger_at = trigger_at;
+        ev.duration_secs = duration_secs;
+        ev.overlay_type = overlay_type;
+        // Editing resets trigger/snooze state if it was snoozed
+        ev.snoozed_until = None;
+    }
+    state.clone()
+}
+
+#[tauri::command]
+pub fn delete_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    state.events.retain(|e| e.id != id);
+    state.clone()
+}
+
+#[tauri::command]
+pub fn dismiss_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        ev.triggered = true;
+        ev.snoozed_until = None;
+    }
+    state.clone()
+}
+
+#[tauri::command]
+pub fn snooze_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        ev.triggered = false;
+        ev.snoozed_until = Some(now_ts + 300); // 5 minutes
+    }
+    state.clone()
+}
+
 pub fn load_state(store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>) -> TimerState {
     store
         .get("timer_state")
@@ -445,6 +551,8 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 state.break_count = 0;
                 state.last_break_ended_at = None;
                 state.break_segments.clear();
+                state.events.clear();
+                state.next_event_id = 1;
                 drop(state);
                 if !old_date.is_empty() && old_active > 0 {
                     if let Ok(store) = ah.store("enoughwork-store.json") {
@@ -493,6 +601,31 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 }
             }
 
+            // Scheduled events: fire any due event.
+            // An event is "due" when trigger_at passes. Once it has passed but the
+            // user snoozed, only the snoozed_until timestamp can re-fire it — the
+            // original trigger_at no longer counts (prevents immediate re-triggering).
+            let now_ts = chrono::Local::now().timestamp();
+            let elapsed_now = state.elapsed_secs;
+            let mut fired_events: Vec<ScheduledEvent> = Vec::new();
+            for ev in state.events.iter_mut() {
+                if ev.triggered {
+                    continue;
+                }
+                let original_due = ev.trigger_at <= now_ts;
+                let due = if let Some(s) = ev.snoozed_until {
+                    s <= now_ts
+                } else {
+                    original_due
+                };
+                if due {
+                    ev.triggered = true;
+                    ev.snoozed_until = None;
+                    ev.elapsed_at_trigger = Some(elapsed_now);
+                    fired_events.push(ev.clone());
+                }
+            }
+
             let state_snapshot = state.clone();
 
             {
@@ -511,6 +644,10 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
 
             if should_show_overlay {
                 let _ = ah.emit("show-overlay", ());
+            }
+
+            for ev in fired_events {
+                let _ = ah.emit("event-triggered", &ev);
             }
         }
     });
