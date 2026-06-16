@@ -158,20 +158,6 @@ A 4.3-second spinning star with a laser trail following a parabolic arch, shown 
 
 ---
 
-## Activity Heatmap
-
-A row of 30 colored squares showing daily work totals for the last 30 days. Hover a square to see the date, work time, and break time.
-
-Color coding:
-- Gray — no data
-- Green — 0 to 8.5 hours
-- Orange — 8.5 to 11 hours
-- Red — over 11 hours
-
-**Limitation:** History is limited to 30 days. Older data is automatically pruned.
-
----
-
 ## Settings
 
 | Setting | Default | Description |
@@ -212,4 +198,3 @@ All data is stored locally in `enoughwork-store.json` (via Tauri's store plugin)
 
 - **Timer state** — current day's tracking data
 - **Settings** — your preferences
-- **Daily history** — last 30 days of work and break totals

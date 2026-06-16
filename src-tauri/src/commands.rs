@@ -4,7 +4,7 @@
 // that moved to persistence.rs/win32.rs are re-exported below to keep the
 // invoke_handler list unchanged.
 
-use crate::persistence::{get_reset_time, load_daily_history, load_settings, save_daily_history};
+use crate::persistence::{get_reset_time, load_settings};
 use crate::state::{
     effective_date, mark_missed_recurring_done, reset_state_for_new_day, BreakSegment,
     BreakSuggestion, ScheduledEvent, TimerState, AppData,
@@ -21,15 +21,7 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
     let mut state = app_data.state.lock().unwrap();
 
     if state.date != today {
-        let (old_date, old_active, old_break, old_elapsed) =
-            reset_state_for_new_day(&mut state, &today);
-        drop(state);
-        if !old_date.is_empty() && old_active > 0 {
-            if let Ok(store) = app_handle.store("enoughwork-store.json") {
-                save_daily_history(&old_date, old_active, old_break, old_elapsed, &store);
-            }
-        }
-        state = app_data.state.lock().unwrap();
+        reset_state_for_new_day(&mut state, &today);
     }
 
     if state.status == "snoozed" {
@@ -329,14 +321,6 @@ pub fn snooze_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
         ev.snoozed_until = Some(now_ts + 300); // 5 minutes
     }
     state.clone()
-}
-
-#[tauri::command]
-pub fn get_history(app_handle: tauri::AppHandle) -> crate::state::DailyHistory {
-    let Ok(store) = app_handle.store("enoughwork-store.json") else {
-        return std::collections::HashMap::new();
-    };
-    load_daily_history(&store)
 }
 
 #[tauri::command]

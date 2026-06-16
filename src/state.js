@@ -22,13 +22,6 @@ export function formatTime(secs) {
   return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
 }
 
-export function localDateKey(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 export function formatClock(unixSecs) {
   const d = new Date(unixSecs * 1000);
   let h = d.getHours();

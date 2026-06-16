@@ -6,7 +6,6 @@
 
 @import "./components/timer.css";
 @import "./components/controls.css";
-@import "./components/heatmap.css";
 @import "./components/break-picker.css";
 @import "./components/overlay.css";
 @import "./components/break-countdown.css";
@@ -46,6 +45,39 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Shared floating tooltip — used by the progress-bar break segment and event
+   dots. (Originally the heatmap's tooltip class; kept here as a shared utility
+   after the heatmap was removed.) */
+.heatmap-tooltip {
+  position: fixed;
+  background: #1e1e2e;
+  color: #f0f0f5;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  line-height: 1.5;
+  top: 0;
+  left: 0;
+}
+
+.heatmap-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e1e2e;
+}
+
+.heatmap-tooltip .tt-time {
+  font-weight: 600;
 }
 
 /* Buttons */

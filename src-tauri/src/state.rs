@@ -1,6 +1,5 @@
 use chrono::{Datelike, Timelike};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -90,16 +89,6 @@ impl Default for TimerState {
         }
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DayRecord {
-    pub active_secs: u64,
-    pub break_secs: u64,
-    #[serde(default)]
-    pub elapsed_secs: u64,
-}
-
-pub type DailyHistory = HashMap<String, DayRecord>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BreakSuggestion {
@@ -240,17 +229,11 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
     mark_missed_recurring_done(events, now_ts);
 }
 
-/// Reset all per-day fields when the effective date rolls over. Returns the
-/// previous day's totals so the caller can persist them to history.
+/// Reset all per-day fields when the effective date rolls over.
 ///
 /// Extracted because `get_state` and the timer tick loop had this block
 /// duplicated verbatim.
-pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) -> (String, u64, u64, u64) {
-    let old_date = state.date.clone();
-    let old_active = state.active_secs;
-    let old_break = state.total_break_secs;
-    let old_elapsed = state.elapsed_secs;
-
+pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) {
     state.date = today.to_string();
     state.elapsed_secs = 0;
     state.active_secs = 0;
@@ -267,6 +250,4 @@ pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) -> (String, 
     state.last_break_ended_at = None;
     state.break_segments.clear();
     rollover_events_for_new_day(&mut state.events);
-
-    (old_date, old_active, old_break, old_elapsed)
 }

@@ -4,7 +4,6 @@
 
 import { $, state, invoke, listen, emit, formatTime } from "./state.js";
 import { renderEventMarkers } from "./progress-bar.js";
-import { updateHeatmapColors, initHeatmap } from "./heatmap.js";
 import { openOverlay, closeAllOverlays, openBreakOverlay, closeBreakOverlay } from "./overlays.js";
 import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate } from "./settings.js";
 import "./break-picker.js";
@@ -16,7 +15,6 @@ async function refreshState() {
   try {
     state.current = await invoke("get_state");
     render();
-    updateHeatmapColors();
   } catch (e) {
     console.error("get_state error:", e);
   }
@@ -435,7 +433,6 @@ setInterval(refreshState, 1000);
 // Initial load — script is at end of body, DOM is ready
 (async () => {
   await refreshState();
-  await initHeatmap();
 
   const dev = await invoke("is_dev");
   if (dev) {

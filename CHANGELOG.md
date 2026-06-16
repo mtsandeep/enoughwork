@@ -7,6 +7,9 @@ All notable changes to EnoughWork will be documented in this file.
 ### Changed
 - Internal code reorganization (no behavior changes): split the large source files into focused modules, moved styles into `src/components/`, and grouped the window pages under `src/windows/`
 
+### Removed
+- Activity heatmap and 30-day history tracking — the daily work/break history grid and its storage have been removed
+
 ## [0.1.8] - 2026-06-14
 
 ### Added

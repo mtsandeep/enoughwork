@@ -1,4 +1,4 @@
-use crate::persistence::{get_reset_time, save_daily_history, save_state};
+use crate::persistence::{get_reset_time, save_state};
 use crate::state::{effective_date, reset_state_for_new_day, AppData, RECUR_WINDOW_SECS};
 use std::time::Instant;
 use tauri::{Emitter, Manager};
@@ -26,15 +26,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
             let mut state = app_data.state.lock().unwrap();
 
             if state.date != today {
-                let (old_date, old_active, old_break, old_elapsed) =
-                    reset_state_for_new_day(&mut state, &today);
-                drop(state);
-                if !old_date.is_empty() && old_active > 0 {
-                    if let Ok(store) = ah.store("enoughwork-store.json") {
-                        save_daily_history(&old_date, old_active, old_break, old_elapsed, &store);
-                    }
-                }
-                state = app_data.state.lock().unwrap();
+                reset_state_for_new_day(&mut state, &today);
             }
 
             if state.status == "snoozed" {
