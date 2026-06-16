@@ -343,11 +343,18 @@ $("#event-add-confirm").addEventListener("click", async () => {
 const eventsPage = $("#events-page");
 let eventsListTick = null;
 
-$("#btn-events-list").addEventListener("click", () => {
+function openEventsList() {
   eventsPage.hidden = false;
   renderEventsList();
   startEventsListTick();
-});
+}
+
+$("#btn-events-list").addEventListener("click", openEventsList);
+
+// Clicking a progress-bar overflow badge (+N) opens Today's Events so the user
+// can see what's beyond the bar.
+$("#event-overflow-left").addEventListener("click", openEventsList);
+$("#event-overflow-right").addEventListener("click", openEventsList);
 
 $("#events-back").addEventListener("click", () => {
   eventsPage.hidden = true;
@@ -397,19 +404,40 @@ export function formatRecurringDays(days) {
 }
 
 // Compute the meta line for a single event (clock · status/countdown)
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// "5:35pm" today, or "Wed 5:35pm" if the trigger falls on a different day.
+function formatClockWithDay(unixSecs, nowSecs) {
+  const d = new Date(unixSecs * 1000);
+  const now = new Date(nowSecs * 1000);
+  const sameDay = d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate();
+  const clock = formatClock(unixSecs);
+  return sameDay ? clock : `${WEEKDAYS[d.getDay()]} ${clock}`;
+}
+
 export function eventMetaText(ev, now) {
-  const clock = formatClock(ev.trigger_at);
-  if (ev.triggered) return `${clock} · triggered`;
+  // Dormant recurring event (not scheduled today): count down to the next
+  // scheduled fire instead of showing "triggered". The backend advances
+  // trigger_at to that next fire on creation/rollover, so formatRelative
+  // produces e.g. "in 1d 2h 30m".
+  const isDormantRecurring = ev.triggered
+    && !ev.recurred_today
+    && (ev.recurring_days || []).length > 0;
+  if (ev.triggered && !isDormantRecurring) return `${formatClockWithDay(ev.trigger_at, now)} · triggered`;
   if (ev.snoozed_until) {
     const left = Math.max(0, Math.ceil(ev.snoozed_until - now));
     const m = Math.floor(left / 60);
-    if (m > 0) return `${clock} · snoozed (${m}m)`;
-    return `${clock} · snoozed (${left}s)`;
+    if (m > 0) return `${formatClockWithDay(ev.trigger_at, now)} · snoozed (${m}m)`;
+    return `${formatClockWithDay(ev.trigger_at, now)} · snoozed (${left}s)`;
   }
-  return `${clock} · ${formatRelative(ev.trigger_at, now)}`;
+  return `${formatClockWithDay(ev.trigger_at, now)} · ${formatRelative(ev.trigger_at, now)}`;
 }
 
-// Live-update only the meta text on each row (avoids full re-render)
+// Live-update only the meta text and state styling on each row (avoids full
+// re-render). This keeps triggered/snoozed styling in sync when an event fires
+// or a snooze elapses while the page is open.
 function tickEventRowTimes() {
   const now = Math.floor(Date.now() / 1000);
   const rows = document.querySelectorAll("#events-list .event-row");
@@ -419,6 +447,15 @@ function tickEventRowTimes() {
     if (!ev) return;
     const textEl = row.querySelector(".event-row-meta-text");
     if (textEl) textEl.textContent = eventMetaText(ev, now);
+    // Sync state-driven classes so a row fades/unsnoozes live without re-open.
+    // Dormant recurring (not scheduled today) is treated as upcoming, not faded.
+    const isDormantRecurring = ev.triggered && !ev.recurred_today && (ev.recurring_days || []).length > 0;
+    const isDone = ev.triggered && !isDormantRecurring;
+    row.classList.toggle("event-row-triggered", isDone);
+    row.classList.toggle("event-row-snoozed", !isDone && !!ev.snoozed_until);
+    // Dot: triggered → gray; otherwise keep its break/reminder color.
+    const dot = row.querySelector(".event-row-dot");
+    if (dot) dot.classList.toggle("triggered-dot", isDone);
   });
 }
 
@@ -462,13 +499,22 @@ export function renderEventsList() {
     return;
   }
   const now = Math.floor(Date.now() / 1000);
+  const todayKey = state.current?.date || "";
   list.innerHTML = events.map(ev => {
     const isBreak = ev.event_type === "break";
     const isRecurring = (ev.recurring_days || []).length > 0;
+    // Dormant recurring (not scheduled today) is treated as upcoming, not faded.
+    const isDormantRecurring = ev.triggered && !ev.recurred_today && isRecurring;
+    const isDone = ev.triggered && !isDormantRecurring;
+    // Does this event fire within today's effective tracking window? Used to
+    // gate the skip button — skipping only makes sense for today's occurrence.
+    const evDate = new Date(ev.trigger_at * 1000);
+    const evKey = `${evDate.getFullYear()}-${String(evDate.getMonth() + 1).padStart(2, "0")}-${String(evDate.getDate()).padStart(2, "0")}`;
+    const firesToday = !todayKey || evKey === todayKey;
     let stateClass = "";
-    if (ev.triggered) stateClass = "event-row-triggered";
+    if (isDone) stateClass = "event-row-triggered";
     else if (ev.snoozed_until) stateClass = "event-row-snoozed";
-    const dotClass = isBreak ? "break-dot" : "" + (ev.triggered ? " triggered-dot" : "");
+    const dotClass = isBreak ? "break-dot" : "" + (isDone ? " triggered-dot" : "");
     const title = isBreak ? `Break (${Math.round(ev.duration_secs / 60)}m)` : (ev.title || "Reminder");
     const meta = eventMetaText(ev, now);
     const recurLabel = isRecurring ? formatRecurringDays(ev.recurring_days) : "";
@@ -479,6 +525,14 @@ export function renderEventsList() {
       : "";
     const editIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const trashIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+    // Skip button: only for recurring events armed to fire today (not yet
+    // triggered, not dormant-for-another-day). After skip → triggered + done
+    // for today, re-armed next scheduled day at rollover.
+    const skipIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>`;
+    const canSkip = isRecurring && !isDone && firesToday;
+    const skipBtn = canSkip
+      ? `<button class="event-row-btn" data-action="skip" data-tooltip="Skip for today">${skipIcon}</button>`
+      : "";
     return `
       <div class="event-row ${stateClass}" data-id="${ev.id}">
         <div class="event-row-dot ${dotClass}"></div>
@@ -487,8 +541,9 @@ export function renderEventsList() {
           <div class="event-row-meta"><span class="event-row-meta-text">${meta}</span><span class="event-badge ${badgeClass}">${badgeText}</span>${recurBadge}</div>
         </div>
         <div class="event-row-actions">
-          <button class="event-row-btn" data-action="edit" title="Edit">${editIcon}</button>
-          <button class="event-row-btn danger" data-action="remove" title="Remove">${trashIcon}</button>
+          ${skipBtn}
+          <button class="event-row-btn" data-action="edit" data-tooltip="Edit">${editIcon}</button>
+          <button class="event-row-btn danger" data-action="remove" data-tooltip="Remove">${trashIcon}</button>
         </div>
       </div>`;
   }).join("");
@@ -504,6 +559,14 @@ export function renderEventsList() {
     row.querySelector('[data-action="edit"]').addEventListener("click", () => {
       enterEditMode(id);
     });
+    const skipBtnEl = row.querySelector('[data-action="skip"]');
+    if (skipBtnEl) {
+      skipBtnEl.addEventListener("click", async () => {
+        state.current = await invoke("skip_event", { id });
+        renderEventsList();
+        render();
+      });
+    }
   });
 }
 
@@ -514,7 +577,10 @@ function formatRelative(targetTs, nowTs) {
   if (diff <= 0) return "due now";
   const m = Math.floor(diff / 60);
   const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  const hr = h % 24;
   const mr = m % 60;
+  if (d > 0) return `in ${d}d ${hr}h ${mr}m`;
   if (h > 0) return `in ${h}h ${mr}m`;
   if (m > 0) return `in ${m}m`;
   return `in ${diff}s`;

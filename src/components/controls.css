@@ -19,7 +19,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 2px solid #e5e7eb;
+  border: 1.5px solid #e5e7eb;
   background: var(--bg);
   font-size: 22px;
   font-weight: 600;
@@ -114,10 +114,11 @@
   width: 32px;
 }
 
-/* Break-duration custom field: larger tick button (36px) */
+/* Break-duration custom field: tick sized for the narrower 32px inputs */
 .limit-tick-btn-lg {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
 }
 
 .limit-input-label {

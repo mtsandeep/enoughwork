@@ -211,9 +211,15 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
         ev.elapsed_at_trigger = None;
 
         if !ev.recurring_days.contains(&today_weekday) {
-            continue; // not scheduled today → stays dormant
+            // Not scheduled today → stays dormant, but advance trigger_at to the
+            // next scheduled fire so the UI counts down to the real next time
+            // (not a stale today-time).
+            if let Some(next_ts) = next_recurring_trigger(&ev.recurring_days, ev.trigger_minute, now) {
+                ev.trigger_at = next_ts;
+            }
+            continue;
         }
-        // Recompute trigger_at to today's HH:MM
+        // Scheduled today: recompute trigger_at to today's HH:MM and arm it.
         if let Some(min_of_day) = ev.trigger_minute {
             let h = min_of_day / 60;
             let m = min_of_day % 60;
@@ -227,6 +233,42 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
     // opened late in the day with the timer stopped) is marked done now so
     // the UI doesn't show "due now" for the rest of the day.
     mark_missed_recurring_done(events, now_ts);
+}
+
+/// Compute the next datetime at which a recurring event should fire, given its
+/// selected weekdays and minute-of-day. Walks forward day-by-day from today
+/// (up to 7 days) and returns the first scheduled weekday whose HH:MM time is
+/// still in the future relative to `now`. Returns None if trigger_minute is
+/// unset (shouldn't happen for recurring events) or no day matches.
+///
+/// Used at creation time (to arm for the correct first fire when today isn't
+/// scheduled) and could be used to advance dormant events so the UI counts
+/// down to the real next fire instead of a stale today-time.
+pub fn next_recurring_trigger(recurring_days: &[u8], trigger_minute: Option<u32>, now: chrono::DateTime<chrono::Local>) -> Option<i64> {
+    let min_of_day = trigger_minute?;
+    if recurring_days.is_empty() {
+        return None;
+    }
+    let h = min_of_day / 60;
+    let m = min_of_day % 60;
+    // Search the next 7 days starting from today.
+    for offset in 0..7 {
+        let day = now + chrono::Duration::days(offset);
+        let weekday = day.weekday().num_days_from_sunday() as u8;
+        if !recurring_days.contains(&weekday) {
+            continue;
+        }
+        if let Some(t) = day.with_hour(h).and_then(|t| t.with_minute(m)).and_then(|t| t.with_second(0)) {
+            let ts = t.timestamp();
+            // Today: only use it if the time hasn't passed yet.
+            // Future days: always valid.
+            if offset == 0 && ts <= now.timestamp() {
+                continue;
+            }
+            return Some(ts);
+        }
+    }
+    None
 }
 
 /// Reset all per-day fields when the effective date rolls over.

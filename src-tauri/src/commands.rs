@@ -224,7 +224,7 @@ pub fn create_event(
     recurring_days: Vec<u8>,
     app_handle: tauri::AppHandle,
 ) -> TimerState {
-    use chrono::Timelike;
+    use chrono::{Datelike, Timelike};
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
     let id = state.next_event_id;
@@ -238,14 +238,32 @@ pub fn create_event(
     } else {
         None
     };
+    // For recurring events: if today isn't a scheduled day, arm for the next
+    // scheduled fire and stay dormant today (don't fire or count down to a
+    // today-time that won't actually trigger).
+    let (effective_trigger_at, effective_triggered) = if !recurring_days.is_empty() {
+        let now = chrono::Local::now();
+        let today_weekday = now.weekday().num_days_from_sunday() as u8;
+        if recurring_days.contains(&today_weekday) {
+            // Today is scheduled: keep the (possibly today-adjusted) trigger_at
+            (trigger_at, false)
+        } else if let Some(next_ts) = crate::state::next_recurring_trigger(&recurring_days, trigger_minute, now) {
+            // Advance to the next scheduled weekday; dormant until then.
+            (next_ts, true)
+        } else {
+            (trigger_at, false)
+        }
+    } else {
+        (trigger_at, false)
+    };
     state.events.push(ScheduledEvent {
         id,
         event_type,
         title,
-        trigger_at,
+        trigger_at: effective_trigger_at,
         duration_secs,
         overlay_type,
-        triggered: false,
+        triggered: effective_triggered,
         snoozed_until: None,
         elapsed_at_trigger: None,
         recurring_days,
@@ -266,13 +284,12 @@ pub fn update_event(
     recurring_days: Vec<u8>,
     app_handle: tauri::AppHandle,
 ) -> TimerState {
-    use chrono::Timelike;
+    use chrono::{Datelike, Timelike};
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
         ev.event_type = event_type;
         ev.title = title;
-        ev.trigger_at = trigger_at;
         ev.duration_secs = duration_secs;
         ev.overlay_type = overlay_type;
         ev.recurring_days = recurring_days.clone();
@@ -283,10 +300,23 @@ pub fn update_event(
         } else {
             None
         };
-        // Editing resets daily trigger state
+        // Editing resets daily trigger state. For recurring events not
+        // scheduled today, arm for the next scheduled fire and stay dormant.
+        let now = chrono::Local::now();
+        let today_weekday = now.weekday().num_days_from_sunday() as u8;
+        let (effective_trigger_at, effective_triggered) = if !recurring_days.is_empty() && !recurring_days.contains(&today_weekday) {
+            if let Some(next_ts) = crate::state::next_recurring_trigger(&recurring_days, ev.trigger_minute, now) {
+                (next_ts, true)
+            } else {
+                (trigger_at, false)
+            }
+        } else {
+            (trigger_at, false)
+        };
+        ev.trigger_at = effective_trigger_at;
         ev.snoozed_until = None;
         ev.recurred_today = false;
-        ev.triggered = false;
+        ev.triggered = effective_triggered;
     }
     state.clone()
 }
@@ -319,6 +349,23 @@ pub fn snooze_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
         ev.triggered = false;
         ev.recurred_today = false; // allow the snoozed re-fire
         ev.snoozed_until = Some(now_ts + 300); // 5 minutes
+    }
+    state.clone()
+}
+
+/// Skip today's occurrence of a recurring event without affecting future days.
+/// Marks the event as fully done for today (triggered + recurred_today), which
+/// the tick loop treats as "don't fire". The next daily rollover resets
+/// recurred_today and re-arms it for the next scheduled weekday.
+/// Only meaningful for recurring events armed to fire today (triggered=false).
+#[tauri::command]
+pub fn skip_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        ev.triggered = true;
+        ev.recurred_today = true;
+        ev.snoozed_until = None;
     }
     state.clone()
 }

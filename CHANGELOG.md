@@ -4,6 +4,9 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Skip today's occurrence of a recurring event (re-arms next scheduled day)
+
 ### Changed
 - Internal code reorganization (no behavior changes): split the large source files into focused modules, moved styles into `src/components/`, and grouped the window pages under `src/windows/`
 - CSS cleanup: consolidated duplicated input, icon-button, and toggle styles into shared classes (`src/components/shared.css`), and unified form border weights with the Settings page

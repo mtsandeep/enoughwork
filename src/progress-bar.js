@@ -3,11 +3,31 @@ import { $, state, invoke, formatClock } from "./state.js";
 import { formatRecurringDays, eventMetaText, enterEditMode } from "./schedule.js";
 import { render } from "./main.js";
 
+// Format a unix timestamp's date as YYYY-MM-DD in local time.
+function localDateKey(unixSecs) {
+  const d = new Date(unixSecs * 1000);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Does this event fire within the current effective day (today, before reset)?
+// state.current.date is the effective date the backend computed using the
+// configured reset time, so comparing the trigger's local date to it tells us
+// whether the event belongs to today's tracking window. Dormant recurring
+// events point to a future day by construction, so they're excluded too.
+function firesToday(ev) {
+  if (!state.current || !state.current.date) return true; // unknown → show (safe default)
+  return localDateKey(ev.trigger_at) === state.current.date;
+}
+
 const EVENT_DOT_DIAMETER = 8;
 // Negative gap => dots overlap by half (centers 4px apart = diameter / 2).
 const EVENT_DOT_GAP = -4;
 
 let eventPopoverId = null; // id of event shown in the popover
+let eventPopoverTick = null; // live-update interval for the popover's meta text
 let dotResizeRaf = 0;
 
 export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
@@ -40,6 +60,11 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
   const dots = []; // {el, pct}
 
   for (const ev of events) {
+    // Only show events that fire within today's tracking window. A dormant
+    // recurring event (e.g. Mon/Wed on a Tuesday) or any future-dated event
+    // is excluded from both dots and the +N overflow badge.
+    if (!firesToday(ev)) continue;
+
     let x; // percentage position on bar (elapsed / limit)
     const triggered = ev.triggered;
 
@@ -193,6 +218,38 @@ if (progressSvg && breakTooltip) {
   });
 }
 
+// Generic floating tooltip: any element carrying data-tooltip shows this on
+// hover, positioned via floating-ui (same look as the progress-bar tooltips).
+const uiTooltip = document.getElementById("ui-tooltip");
+if (uiTooltip) {
+  document.addEventListener("mouseover", async (e) => {
+    const target = e.target.closest("[data-tooltip]");
+    if (!target) return;
+    uiTooltip.innerHTML = `<div class="tt-time">${target.dataset.tooltip}</div>`;
+    uiTooltip.hidden = false;
+    const { x, y } = await computePosition(target, uiTooltip, {
+      placement: "top",
+      middleware: [floatingOffset(6), flip(), shift({ padding: 8 })],
+    });
+    uiTooltip.style.left = `${x}px`;
+    uiTooltip.style.top = `${y}px`;
+  });
+  document.addEventListener("mouseout", (e) => {
+    const target = e.target.closest("[data-tooltip]");
+    if (!target) return;
+    if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+    uiTooltip.hidden = true;
+  });
+  // Hide the tooltip on mousedown so it doesn't linger after a click removes
+  // the hovered element (e.g. Skip → re-render removes the button before
+  // mouseout fires). mousedown precedes the click handler, so this always
+  // fires while the node still exists.
+  document.addEventListener("mousedown", (e) => {
+    if (!e.target.closest("[data-tooltip]")) return;
+    uiTooltip.hidden = true;
+  });
+}
+
 // Event marker tooltip (dots live in #event-dots overlay)
 const eventTooltip = document.getElementById("event-tooltip");
 const eventDotsHost = document.getElementById("event-dots");
@@ -228,25 +285,39 @@ if (eventDotsHost && eventTooltip) {
 }
 
 // ===== Event dot detail popover =====
-async function openEventDotPopover(id, anchor) {
-  const ev = state.current.events.find(e => e.id === id);
+function refreshEventPopoverMeta() {
+  if (eventPopoverId == null) return;
+  const ev = state.current?.events?.find(e => e.id === eventPopoverId);
   if (!ev) return;
-  eventPopoverId = id;
-
-  // Populate content
-  const titleEl = $("#event-popover-title");
   const metaEl = $("#event-popover-meta");
-  if (ev.event_type === "break") {
-    const m = Math.round(ev.duration_secs / 60);
-    titleEl.textContent = `${ev.triggered ? "✓ " : ""}Break · ${m}m`;
-  } else {
-    titleEl.textContent = `${ev.triggered ? "✓ " : ""}${ev.title || "Reminder"}`;
-  }
   const now = Math.floor(Date.now() / 1000);
   const recur = formatRecurringDays(ev.recurring_days);
   metaEl.textContent = recur
     ? `${eventMetaText(ev, now)} · ${recur}`
     : eventMetaText(ev, now);
+}
+
+async function openEventDotPopover(id, anchor) {
+  const ev = state.current.events.find(e => e.id === id);
+  if (!ev) return;
+  eventPopoverId = id;
+
+  // Populate content. Title text goes in the span (the skip icon sits at the
+  // row's right edge via flex); the skip icon shows only for recurring events
+  // armed to fire today (not triggered, not dormant-for-another-day).
+  const titleTextEl = $("#event-popover-title-text");
+  if (ev.event_type === "break") {
+    const m = Math.round(ev.duration_secs / 60);
+    titleTextEl.textContent = `${ev.triggered ? "✓ " : ""}Break · ${m}m`;
+  } else {
+    titleTextEl.textContent = `${ev.triggered ? "✓ " : ""}${ev.title || "Reminder"}`;
+  }
+  const isRecurring = (ev.recurring_days || []).length > 0;
+  // Skip only makes sense for today's occurrence — gate on firesToday so a
+  // dormant recurring event pointing to tomorrow doesn't show skip.
+  const canSkip = isRecurring && !ev.triggered && firesToday(ev);
+  $("#event-popover-skip").hidden = !canSkip;
+  refreshEventPopoverMeta();
 
   // Show backdrop + popover
   const popover = $("#event-popover");
@@ -264,9 +335,22 @@ async function openEventDotPopover(id, anchor) {
   });
   popover.style.left = `${x}px`;
   popover.style.top = `${y}px`;
+
+  // Live-update the meta text (countdown / "due now" / snoozed timer) every
+  // second, mirroring the Today's Events list. Cleared on close.
+  stopEventPopoverTick();
+  eventPopoverTick = setInterval(refreshEventPopoverMeta, 1000);
+}
+
+function stopEventPopoverTick() {
+  if (eventPopoverTick) {
+    clearInterval(eventPopoverTick);
+    eventPopoverTick = null;
+  }
 }
 
 export function closeEventDotPopover() {
+  stopEventPopoverTick();
   $("#event-popover").hidden = true;
   $("#event-popover-backdrop").hidden = true;
   eventPopoverId = null;
@@ -290,6 +374,14 @@ export function closeEventDotPopover() {
     const id = eventPopoverId;
     closeEventDotPopover();
     state.current = await invoke("delete_event", { id });
+    render();
+  });
+
+  $("#event-popover-skip").addEventListener("click", async () => {
+    if (eventPopoverId == null) return;
+    const id = eventPopoverId;
+    closeEventDotPopover();
+    state.current = await invoke("skip_event", { id });
     render();
   });
 
