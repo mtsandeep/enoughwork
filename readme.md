@@ -35,18 +35,21 @@ See [docs/features.md](docs/features.md) for detailed feature documentation and 
   <img src="screenshots/enoughwork-app.jpg" width="300" alt="Main window" />
   &nbsp;&nbsp;
   <img src="screenshots/enoughwork-settings.jpg" width="300" alt="Settings" />
+</p>
+<p align="center">
+  <img src="screenshots/enoughwork-events.jpg" width="300" alt="Today's events" />
   &nbsp;&nbsp;
   <img src="screenshots/enoughwork-take-break.jpg" width="300" alt="Take break picker" />
 </p>
 <p align="center">
-  <img src="screenshots/enoughwork-break-overlay.jpg" width="300" alt="Break countdown overlay" />
+  <img src="screenshots/enoughwork-overlay.jpg" width="300" alt="Limit reached overlay" />
   &nbsp;&nbsp;
-  <img src="screenshots/enoughwork-break-recharged-overlay.jpg" width="300" alt="Break recharged overlay" />
+  <img src="screenshots/enoughwork-mini-notifications.jpg" width="300" alt="Quiet mode notifications" />
 </p>
 <p align="center">
-  <img src="screenshots/enoughwork-overlay.jpg" width="400" alt="Limit reached overlay" />
+  <img src="screenshots/enoughwork-event-overlay.jpg" width="300" alt="Event reminder overlay" />
   &nbsp;&nbsp;
-  <img src="screenshots/enoughwork-mini-notifications.jpg" width="400" alt="Quiet mode notifications" />
+  <img src="screenshots/enoughwork-break-recharged-overlay.jpg" width="300" alt="Break recharged overlay" />
 </p>
 
 ## Tech stack
