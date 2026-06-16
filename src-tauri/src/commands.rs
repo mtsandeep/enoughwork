@@ -157,10 +157,48 @@ fn effective_date(reset_time: &str) -> String {
 
 /// On a new effective day: drop one-time events, keep recurring ones and
 /// re-arm them for today. Recurring events whose weekday isn't scheduled today
+/// Fire window for recurring events (seconds after trigger_at during which
+/// the event is still considered "live" and can fire). Defined here so both
+/// the tick loop and rollover share one value.
+pub const RECUR_WINDOW_SECS: i64 = 60;
+
+/// For each recurring event armed for today whose fire window has already
+/// passed (e.g. the laptop was off past trigger_at + window), mark it done
+/// for the day so the UI shows "triggered" instead of "due now".
+///
+/// Idempotent. Two cases per event, both gated on the fire window having
+/// passed (trigger_at + window <= now):
+///  - armed for today (triggered=false): mark done. This also rescues events
+///    stuck in the half-marked state from older builds (recurred_today=true
+///    but triggered=false), which kept showing "due now" in the UI.
+///  - dormant (triggered=true, recurred_today=false): leave alone — that's a
+///    non-scheduled weekday or a not-yet-rearmed rollover state, not "missed".
+fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64) {
+    for ev in events.iter_mut() {
+        if ev.recurring_days.is_empty() {
+            continue; // one-time events are handled elsewhere
+        }
+        // Dormant (not scheduled today, or pre-arm): skip so we don't mistake
+        // it for "missed".
+        if ev.triggered && !ev.recurred_today {
+            continue;
+        }
+        // Already fully done for today: nothing to do.
+        if ev.triggered && ev.recurred_today {
+            continue;
+        }
+        if now_ts >= ev.trigger_at + RECUR_WINDOW_SECS {
+            ev.recurred_today = true;
+            ev.triggered = true;
+        }
+    }
+}
+
 /// are left dormant (triggered=true) so they never fire; scheduled ones get
 /// trigger_at recomputed to today's HH:MM and triggered=false.
 fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
     let now = chrono::Local::now();
+    let now_ts = now.timestamp();
     let today_weekday = now.weekday().num_days_from_sunday() as u8;
     events.retain(|e| !e.recurring_days.is_empty());
     for ev in events.iter_mut() {
@@ -183,6 +221,10 @@ fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
             }
         }
     }
+    // Any event armed for today whose time has already passed (e.g. app
+    // opened late in the day with the timer stopped) is marked done now so
+    // the UI doesn't show "due now" for the rest of the day.
+    mark_missed_recurring_done(events, now_ts);
 }
 
 pub struct AppData {
@@ -240,6 +282,14 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
                 return app_handle.state::<AppData>().state.lock().unwrap().clone();
             }
         }
+    }
+
+    // Mark any recurring event whose fire window passed today (e.g. app was
+    // closed at trigger time). Done on every poll so it stays correct even
+    // when the timer is idle and the tick loop isn't running.
+    {
+        let now_ts = chrono::Local::now().timestamp();
+        mark_missed_recurring_done(&mut state.events, now_ts);
     }
 
     state.clone()
@@ -663,10 +713,9 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
             // Scheduled events: fire any due event.
             // - One-time: due when trigger_at passes. After snooze, only snoozed_until re-fires.
             // - Recurring: due only within a 60s window after trigger_at, and only once per day.
-            //   If the laptop was off past the window, it never fires (no backfill).
+            //   If the laptop was off past the window, it's marked done for today (no backfill).
             let now_ts = chrono::Local::now().timestamp();
             let elapsed_now = state.elapsed_secs;
-            const RECUR_WINDOW_SECS: i64 = 60;
             let mut fired_events: Vec<ScheduledEvent> = Vec::new();
             for ev in state.events.iter_mut() {
                 let is_recurring = !ev.recurring_days.is_empty();
@@ -680,6 +729,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                     if let Some(s) = ev.snoozed_until {
                         if s <= now_ts {
                             ev.recurred_today = true;
+                            ev.triggered = true;
                             ev.snoozed_until = None;
                             ev.elapsed_at_trigger = Some(elapsed_now);
                             fired_events.push(ev.clone());
@@ -689,10 +739,17 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                     // Windowed due check — only fire if we're within the window
                     if ev.trigger_at <= now_ts && now_ts < ev.trigger_at + RECUR_WINDOW_SECS {
                         ev.recurred_today = true;
+                        ev.triggered = true;
                         ev.elapsed_at_trigger = Some(elapsed_now);
                         fired_events.push(ev.clone());
+                        continue;
                     }
-                    // If now_ts >= trigger_at + WINDOW we missed it → never fires today
+                    // Past the fire window for today → mark done for today
+                    // (no backfill; re-armed next scheduled day at rollover).
+                    if now_ts >= ev.trigger_at + RECUR_WINDOW_SECS {
+                        ev.recurred_today = true;
+                        ev.triggered = true;
+                    }
                     continue;
                 }
 

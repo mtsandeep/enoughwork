@@ -5,6 +5,11 @@ export default {
   server: {
     port: 1420,
     strictPort: true,
+    watch: {
+      // Don't watch Rust build output / Tauri sources — cargo writes to these
+      // during builds and Windows locks the files (EBUSY), crashing the watcher.
+      ignored: ["**/src-tauri/**", "**/target/**", "**/dist/**"],
+    },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

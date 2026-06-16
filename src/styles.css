@@ -79,6 +79,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.progress-host {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
 .progress-bar {
   width: 100%;
   max-width: 400px;
@@ -259,6 +265,17 @@ body {
 
 .limit-input:focus {
   border-color: var(--accent);
+}
+
+/* Break-duration custom field: narrower inputs (32px wide) */
+.limit-input-lg {
+  width: 32px;
+}
+
+/* Break-duration custom field: larger tick button (36px) */
+.limit-tick-btn-lg {
+  width: 36px;
+  height: 36px;
 }
 
 .limit-input-label {
@@ -1284,7 +1301,7 @@ body {
   width: 100%;
   max-width: 400px;
 }
-.progress-wrap .progress-bar {
+.progress-wrap .progress-host {
   flex: 1;
   max-width: none;
 }
@@ -1308,19 +1325,115 @@ body {
   display: none !important;
 }
 
-/* Event markers on the progress bar */
-.progress-event {
-  fill: #f59e0b;
-  opacity: 1;
-  transition: x 1s linear, width 1s linear;
+/* Event dots overlay on the progress bar */
+.event-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.event-dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #f59e0b; /* reminders / upcoming reminders */
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
   cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
-.progress-event:hover {
-  fill: #d97706;
+/* Fired reminders — lighter amber */
+.event-dot.triggered {
+  background: #fbbf24;
 }
-.progress-event.triggered {
-  fill: #fbbf24;
-  opacity: 1;
+/* Upcoming scheduled breaks — teal, matching the .progress-break segments */
+.event-dot.break-type {
+  background: #99f6e4;
+}
+.event-dot:hover,
+.event-dot.is-active {
+  background: #d97706;
+  transform: scale(1.35);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+}
+.event-dot.break-type:hover,
+.event-dot.break-type.is-active {
+  background: #5eead4;
+  box-shadow: 0 0 0 3px rgba(153, 250, 228, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+}
+
+/* ===== Event dot detail popover (modern minimal card) ===== */
+.event-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 149;
+  background: rgba(15, 15, 26, 0.18);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.event-popover {
+  z-index: 150;
+  min-width: 200px;
+  max-width: 248px;
+  padding: 0;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #eef0f3;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
+              0 12px 28px rgba(16, 24, 40, 0.14);
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+.event-popover-title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-word;
+  padding: 14px 16px 0;
+}
+.event-popover-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.5;
+  padding: 0 16px 14px;
+}
+.event-popover-actions {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid #f2f4f7;
+}
+.event-popover-btn {
+  flex: 1;
+  cursor: pointer;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 11px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.event-popover-btn + .event-popover-btn {
+  border-left: 1px solid #f2f4f7;
+}
+.event-popover-btn:hover {
+  background: #f9fafb;
+  color: var(--text);
+}
+.event-popover-btn.danger:hover {
+  background: #fef2f2;
+  color: var(--danger);
 }
 
 /* ===== Quick Add Event Panel (full-page overlay) ===== */
@@ -1392,11 +1505,9 @@ body {
   display: none;
 }
 .event-field-label {
-  font-size: 12px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
 }
 .event-input {
   padding: 10px 12px;
@@ -1418,6 +1529,34 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* "Custom" break duration pill — expands inline to a h/m editor + tick */
+.event-break-custom {
+  display: inline-flex;
+  align-items: center;
+}
+.event-break-custom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.event-break-custom-btn[hidden] {
+  display: none;
+}
+.event-break-custom-pencil {
+  opacity: 0.7;
+}
+.event-break-custom-pencil[hidden] {
+  display: none;
+}
+.event-break-custom-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.event-break-custom-editor[hidden] {
+  display: none;
 }
 
 .event-day-picks {
@@ -1449,8 +1588,8 @@ body {
   border-color: var(--accent);
 }
 .event-day-btn.active {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-light);
+  color: var(--accent);
   border-color: var(--accent);
 }
 
@@ -1474,8 +1613,8 @@ body {
   border-color: var(--accent);
 }
 .event-pill-btn.active {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-light);
+  color: var(--accent);
   border-color: var(--accent);
 }
 

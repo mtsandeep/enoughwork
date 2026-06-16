@@ -241,12 +241,29 @@ function render() {
 }
 
 // ===== Scheduled Events: progress bar markers =====
+const EVENT_DOT_DIAMETER = 8;
+// Negative gap => dots overlap by half (centers 4px apart = diameter / 2).
+const EVENT_DOT_GAP = -4;
+
 function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
-  // Remove existing event markers
-  barEl.querySelectorAll(".progress-event").forEach(el => el.remove());
+  const dotsHost = document.getElementById("event-dots");
 
   const events = currentState.events || [];
   const now = Math.floor(Date.now() / 1000);
+
+  // Index existing dots by event id so we can update them in place rather
+  // than recreating them every tick. Rebuilding each tick would destroy the
+  // node under the cursor and reset :hover / .is-active, making the hover
+  // highlight pulsate once per second.
+  const existing = new Map(); // eventId -> element
+  if (dotsHost) {
+    for (const el of dotsHost.querySelectorAll(".event-dot")) {
+      if (el.dataset.eventId != null) {
+        existing.set(String(el.dataset.eventId), el);
+      }
+    }
+  }
+  const seen = new Set();
 
   // Position = fraction of elapsed axis (the same axis the blue fill uses).
   // For upcoming events, estimate the elapsed time at trigger using a simple
@@ -255,6 +272,7 @@ function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
   let rightCount = 0;
   const leftTitles = [];
   const rightTitles = [];
+  const dots = []; // {el, pct}
 
   for (const ev of events) {
     let x; // percentage position on bar (elapsed / limit)
@@ -282,26 +300,39 @@ function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
       continue;
     }
 
-    // Render marker
-    const el = document.createElementNS(svgNS, "rect");
-    el.classList.add("progress-event");
-    if (triggered) el.classList.add("triggered");
-    el.setAttribute("y", "0");
-    el.setAttribute("height", "6");
-    el.setAttribute("x", Math.min(x, 100));
+    // A triggered break already has a teal .progress-break segment (sized by
+    // its duration), so a dot would be redundant — skip it.
+    if (triggered && ev.event_type === "break") continue;
 
-    let width;
-    if (triggered && ev.event_type === "break") {
-      width = limit_secs > 0 ? (ev.duration_secs / limit_secs) * 100 : 2;
-    } else {
-      width = 0; // reminder / upcoming — thin marker
+    // Reuse the existing dot for this event if present, else create one.
+    // (True circle via HTML — the non-uniformly stretched SVG would squash an
+    // SVG <circle> into an ellipse.)
+    const key = String(ev.id);
+    let el = existing.get(key);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "event-dot";
+      el.dataset.eventId = ev.id;
+      if (dotsHost) dotsHost.appendChild(el);
     }
-    el.setAttribute("width", Math.max(width, 2 / (400 / 100))); // min ~0.5 in viewBox units
-    // store tooltip data
-    el.dataset.eventId = ev.id;
+    // Keep class/label fresh without recreating the node.
+    el.classList.toggle("triggered", !!triggered);
+    el.classList.toggle("break-type", ev.event_type === "break");
     el.dataset.eventLabel = formatEventLabel(ev);
-    barEl.appendChild(el);
+    seen.add(key);
+    dots.push({ el, pct: Math.min(x, 100) });
   }
+
+  // Drop dots for events that are no longer visible on the bar.
+  if (dotsHost) {
+    for (const [key, el] of existing) {
+      if (!seen.has(key)) el.remove();
+    }
+  }
+
+  // Position dots: convert each to pixels, then spread overlapping ones
+  // side-by-side so close events stay individually clickable.
+  if (dotsHost) positionEventDots(dotsHost, dots);
 
   // Overflow badges
   const leftBadge = $("#event-overflow-left");
@@ -319,6 +350,41 @@ function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
     rightBadge.hidden = false;
   } else {
     rightBadge.hidden = true;
+  }
+}
+
+// Lay out event dots along the bar. Each dot's natural X reflects its real
+// time position; when neighbors overlap they are nudged apart horizontally
+// ("spread along bar"), so X becomes approximate only where collisions occur.
+function positionEventDots(host, dots) {
+  const W = host.clientWidth;
+  if (W <= 0) return;
+  const r = EVENT_DOT_DIAMETER / 2;
+  const spacing = EVENT_DOT_DIAMETER + EVENT_DOT_GAP;
+
+  // Natural X in pixels (clamp to bar).
+  const pts = dots.map(d => ({
+    el: d.el,
+    x: Math.max(r, Math.min(W - r, (d.pct / 100) * W)),
+  }));
+  pts.sort((a, b) => a.x - b.x);
+
+  // Forward pass: push overlapping dots to the right.
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].x - pts[i - 1].x < spacing) {
+      pts[i].x = pts[i - 1].x + spacing;
+    }
+  }
+  // Backward pass: if the run hit the right edge, pull neighbors back left.
+  for (let i = pts.length - 2; i >= 0; i--) {
+    if (pts[i + 1].x - pts[i].x < spacing) {
+      pts[i].x = pts[i + 1].x - spacing;
+    }
+  }
+  // Final clamp to bar bounds.
+  for (const p of pts) {
+    p.x = Math.max(r, Math.min(W - r, p.x));
+    p.el.style.left = `${p.x}px`;
   }
 }
 
@@ -589,27 +655,145 @@ if (progressSvg && breakTooltip) {
   });
 }
 
-// Event marker tooltip
+// Event marker tooltip (dots live in #event-dots overlay)
 const eventTooltip = document.getElementById("event-tooltip");
-if (progressSvg && eventTooltip) {
-  progressSvg.addEventListener("mouseover", async (e) => {
-    const rect = e.target.closest(".progress-event");
-    if (!rect || !rect.dataset.eventLabel) return;
-    eventTooltip.innerHTML = `<div class="tt-time">${rect.dataset.eventLabel}</div>`;
+const eventDotsHost = document.getElementById("event-dots");
+if (eventDotsHost && eventTooltip) {
+  eventDotsHost.addEventListener("mouseover", async (e) => {
+    const dot = e.target.closest(".event-dot");
+    if (!dot || !dot.dataset.eventLabel) return;
+    dot.classList.add("is-active");
+    eventTooltip.innerHTML = `<div class="tt-time">${dot.dataset.eventLabel}</div>`;
     eventTooltip.hidden = false;
-    const { x, y } = await computePosition(rect, eventTooltip, {
+    const { x, y } = await computePosition(dot, eventTooltip, {
       placement: "top",
       middleware: [floatingOffset(6), flip(), shift({ padding: 8 })],
     });
     eventTooltip.style.left = `${x}px`;
     eventTooltip.style.top = `${y}px`;
   });
-  progressSvg.addEventListener("mouseout", (e) => {
-    if (!progressSvg.contains(e.relatedTarget)) {
+  eventDotsHost.addEventListener("mouseout", (e) => {
+    const dot = e.target.closest(".event-dot");
+    if (dot) dot.classList.remove("is-active");
+    if (!eventDotsHost.contains(e.relatedTarget)) {
       eventTooltip.hidden = true;
     }
   });
+  // Click a dot → open the detail popover.
+  eventDotsHost.addEventListener("click", (e) => {
+    const dot = e.target.closest(".event-dot");
+    if (!dot || dot.dataset.eventId == null) return;
+    e.stopPropagation();
+    const id = parseInt(dot.dataset.eventId, 10);
+    openEventDotPopover(id, dot);
+  });
 }
+
+// ===== Event dot detail popover =====
+let eventPopoverId = null; // id of event shown in the popover
+
+async function openEventDotPopover(id, anchor) {
+  const ev = currentState.events.find(e => e.id === id);
+  if (!ev) return;
+  eventPopoverId = id;
+
+  // Populate content
+  const titleEl = $("#event-popover-title");
+  const metaEl = $("#event-popover-meta");
+  if (ev.event_type === "break") {
+    const m = Math.round(ev.duration_secs / 60);
+    titleEl.textContent = `${ev.triggered ? "✓ " : ""}Break · ${m}m`;
+  } else {
+    titleEl.textContent = `${ev.triggered ? "✓ " : ""}${ev.title || "Reminder"}`;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const recur = formatRecurringDays(ev.recurring_days);
+  metaEl.textContent = recur
+    ? `${eventMetaText(ev, now)} · ${recur}`
+    : eventMetaText(ev, now);
+
+  // Show backdrop + popover
+  const popover = $("#event-popover");
+  const backdrop = $("#event-popover-backdrop");
+  popover.hidden = false;
+  backdrop.hidden = false;
+
+  // Hide the hover tooltip while the popover is open.
+  eventTooltip.hidden = true;
+
+  // Position next to the dot using the same floating-ui flow as the tooltip.
+  const { x, y } = await computePosition(anchor, popover, {
+    placement: "top",
+    middleware: [floatingOffset(8), flip(), shift({ padding: 8 })],
+  });
+  popover.style.left = `${x}px`;
+  popover.style.top = `${y}px`;
+}
+
+function closeEventDotPopover() {
+  $("#event-popover").hidden = true;
+  $("#event-popover-backdrop").hidden = true;
+  eventPopoverId = null;
+}
+
+// Wire popover buttons + dismiss interactions (once).
+(function initEventDotPopover() {
+  const popover = $("#event-popover");
+  const backdrop = $("#event-popover-backdrop");
+  if (!popover) return;
+
+  $("#event-popover-edit").addEventListener("click", () => {
+    if (eventPopoverId == null) return;
+    const id = eventPopoverId;
+    closeEventDotPopover();
+    enterEditMode(id);
+  });
+
+  $("#event-popover-delete").addEventListener("click", async () => {
+    if (eventPopoverId == null) return;
+    const id = eventPopoverId;
+    closeEventDotPopover();
+    currentState = await invoke("delete_event", { id });
+    render();
+  });
+
+  // Click the dimmed backdrop → close.
+  backdrop.addEventListener("click", closeEventDotPopover);
+
+  // Escape → close.
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !popover.hidden) closeEventDotPopover();
+  });
+})();
+
+// Re-spread dots immediately when the bar resizes (not just on next tick).
+let dotResizeRaf = 0;
+window.addEventListener("resize", () => {
+  if (dotResizeRaf) cancelAnimationFrame(dotResizeRaf);
+  dotResizeRaf = requestAnimationFrame(() => {
+    if (!currentState) return;
+    const host = document.getElementById("event-dots");
+    if (!host) return;
+    const r = EVENT_DOT_DIAMETER / 2;
+    const spacing = EVENT_DOT_DIAMETER + EVENT_DOT_GAP;
+    const W = host.clientWidth;
+    if (W <= 0) return;
+    const pts = Array.from(host.querySelectorAll(".event-dot"))
+      .map(el => ({ el, x: parseFloat(el.style.left) }))
+      .filter(p => !Number.isNaN(p.x))
+      .sort((a, b) => a.x - b.x);
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].x - pts[i - 1].x < spacing) pts[i].x = pts[i - 1].x + spacing;
+    }
+    for (let i = pts.length - 2; i >= 0; i--) {
+      if (pts[i + 1].x - pts[i].x < spacing) pts[i].x = pts[i + 1].x - spacing;
+    }
+    for (const p of pts) {
+      p.x = Math.max(r, Math.min(W - r, p.x));
+      p.el.style.left = `${p.x}px`;
+    }
+  });
+});
 
 function snapUp(mins) {
   if (mins < 30) return 30;
@@ -850,6 +1034,8 @@ $("#btn-start-break").addEventListener("click", async () => {
 let evtType = "reminder";            // "reminder" | "break"
 let evtOverlay = "fullscreen";       // "fullscreen" | "mini"
 let evtBreakMin = 15;
+let evtBreakCustom = false;          // custom break duration mode (stepper shown)
+let evtBreakEditing = false;         // custom break duration inline-edit mode
 let evtTimeMode = "clock";           // "clock" (at HH:MM) | "relative" (in Xh Ym)
 let evtRelMin = 5;                   // minutes from now (relative mode)
 let evtRelEditing = false;           // relative time manual-edit mode
@@ -864,6 +1050,8 @@ function resetEventForm() {
   evtType = "reminder";
   evtOverlay = "fullscreen";
   evtBreakMin = 15;
+  evtBreakCustom = false;
+  hideEventBreakEditor();
   evtTimeMode = "clock";
   $("#event-title-input").value = "";
   // default clock = now + 30 min, rounded to next minute
@@ -881,6 +1069,51 @@ function resetEventForm() {
   applyEventFormState();
 }
 
+// ===== Custom break duration editor (inline h/m + tick) =====
+const BREAK_PRESET_MINS = [5, 10, 15, 20, 30, 60];
+
+function customBreakLabel() {
+  const h = Math.floor(evtBreakMin / 60);
+  const m = evtBreakMin % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+}
+
+function isBreakPreset() {
+  return BREAK_PRESET_MINS.includes(evtBreakMin);
+}
+
+// Sync the h/m input fields to the current value
+function syncEventBreakInputs() {
+  $("#event-break-h-input").value = Math.floor(evtBreakMin / 60);
+  $("#event-break-m-input").value = evtBreakMin % 60;
+}
+
+// Show the h/m editor in place of the "Custom" button
+function showEventBreakEditor() {
+  evtBreakEditing = true;
+  syncEventBreakInputs();
+  $("#event-break-custom-btn").hidden = true;
+  $("#event-break-custom-editor").hidden = false;
+  $("#event-break-h-input").focus();
+  $("#event-break-h-input").select();
+}
+
+// Collapse the editor back to the value pill
+function hideEventBreakEditor() {
+  evtBreakEditing = false;
+  $("#event-break-custom-editor").hidden = true;
+  $("#event-break-custom-btn").hidden = false;
+}
+
+function saveEventBreakEdit() {
+  const h = Math.max(0, parseInt($("#event-break-h-input").value) || 0);
+  const m = Math.max(0, parseInt($("#event-break-m-input").value) || 0);
+  evtBreakMin = Math.max(1, Math.min(h * 60 + m, 180));
+  evtBreakCustom = !isBreakPreset();
+  hideEventBreakEditor();
+  applyEventFormState();
+}
+
 function applyEventFormState() {
   // type toggle
   document.querySelectorAll("#event-type-toggle .event-type-btn").forEach(b => {
@@ -891,9 +1124,25 @@ function applyEventFormState() {
   $("#event-duration-field").hidden = evtType !== "break";
   $("#event-overlay-field").hidden = evtType !== "reminder";
   // duration quick picks
-  document.querySelectorAll("#event-break-picks .break-quick-btn").forEach(b => {
-    b.classList.toggle("active", parseInt(b.dataset.min) === evtBreakMin);
+  const presetMins = Array.from(document.querySelectorAll("#event-break-picks .break-quick-btn[data-min]"))
+    .map(b => parseInt(b.dataset.min));
+  const isPreset = presetMins.includes(evtBreakMin);
+  document.querySelectorAll("#event-break-picks .break-quick-btn[data-min]").forEach(b => {
+    b.classList.toggle("active", isPreset && parseInt(b.dataset.min) === evtBreakMin);
   });
+  // Custom slot: shows "Custom" until a value is committed, then the value
+  // with a pencil (editable). evtBreakCustom is the single source of truth.
+  $("#event-break-custom-btn").classList.toggle("active", evtBreakCustom);
+  $("#event-break-custom-label").textContent = evtBreakCustom ? customBreakLabel() : "Custom";
+  // Toggle the pencil via attribute (SVG .hidden IDL property is unreliable).
+  const pencilEl = document.getElementById("event-break-custom-pencil");
+  if (pencilEl) {
+    if (evtBreakCustom) pencilEl.removeAttribute("hidden");
+    else pencilEl.setAttribute("hidden", "");
+  }
+  if (!evtBreakEditing) syncEventBreakInputs();
+  // Selecting a preset collapses any open editor
+  if (isPreset && evtBreakEditing) hideEventBreakEditor();
   // overlay pills
   document.querySelectorAll("#event-overlay-toggle .event-pill-btn").forEach(b => {
     b.classList.toggle("active", b.dataset.overlay === evtOverlay);
@@ -1055,11 +1304,27 @@ document.querySelectorAll("#event-day-picks .event-day-btn").forEach(b => {
   });
 });
 
-document.querySelectorAll("#event-break-picks .break-quick-btn").forEach(b => {
+document.querySelectorAll("#event-break-picks .break-quick-btn[data-min]").forEach(b => {
   b.addEventListener("click", () => {
     evtBreakMin = parseInt(b.dataset.min);
+    evtBreakCustom = false;
     applyEventFormState();
   });
+});
+
+// "Custom" button → reveal the h/m editor with a tick (re-edit if already set)
+$("#event-break-custom-btn").addEventListener("click", () => {
+  if (evtBreakEditing) return;
+  showEventBreakEditor();
+});
+$("#event-break-tick").addEventListener("click", saveEventBreakEdit);
+$("#event-break-h-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveEventBreakEdit();
+  if (e.key === "Escape") { hideEventBreakEditor(); applyEventFormState(); }
+});
+$("#event-break-m-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveEventBreakEdit();
+  if (e.key === "Escape") { hideEventBreakEditor(); applyEventFormState(); }
 });
 
 $("#event-mode-btn").addEventListener("click", () => {
@@ -1167,6 +1432,38 @@ function tickEventRowTimes() {
   });
 }
 
+// Load an existing event into the quick-add form in "edit" mode. Used by both
+// the events list row Edit button and the progress-bar dot popover.
+function enterEditMode(id) {
+  const ev = currentState.events.find(e => e.id === id);
+  if (!ev) return;
+  eventsEditingId = id;
+  // Load event into quick-add form
+  evtType = ev.event_type;
+  evtOverlay = ev.overlay_type || "fullscreen";
+  evtBreakMin = Math.max(1, Math.round((ev.duration_secs || 0) / 60));
+  $("#event-title-input").value = ev.title || "";
+  evtTimeMode = "clock";
+  const d = new Date(ev.trigger_at * 1000);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  $("#event-clock-input").value = `${hh}:${mm}`;
+  evtRelMin = 30;
+  updateEventRelDisplay();
+  closeEventRelEdit();
+  // Load recurring state
+  const days = ev.recurring_days || [];
+  evtRecurring = days.length > 0;
+  evtRecurDays = new Set(days);
+  applyEventFormState();
+  eventsPage.hidden = true;
+  evtPanel.hidden = false;
+  // Swap confirm handler to update mode
+  editingConfirmMode = true;
+  // Close the dot popover if it's open
+  closeEventDotPopover();
+}
+
 function renderEventsList() {
   const list = $("#events-list");
   const events = (currentState.events || []).slice().sort((a, b) => a.trigger_at - b.trigger_at);
@@ -1215,31 +1512,7 @@ function renderEventsList() {
       render();
     });
     row.querySelector('[data-action="edit"]').addEventListener("click", () => {
-      const ev = currentState.events.find(e => e.id === id);
-      if (!ev) return;
-      eventsEditingId = id;
-      // Load event into quick-add form
-      evtType = ev.event_type;
-      evtOverlay = ev.overlay_type || "fullscreen";
-      evtBreakMin = Math.max(5, Math.round((ev.duration_secs || 0) / 60));
-      $("#event-title-input").value = ev.title || "";
-      evtTimeMode = "clock";
-      const d = new Date(ev.trigger_at * 1000);
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      $("#event-clock-input").value = `${hh}:${mm}`;
-      evtRelMin = 30;
-      updateEventRelDisplay();
-      closeEventRelEdit();
-      // Load recurring state
-      const days = ev.recurring_days || [];
-      evtRecurring = days.length > 0;
-      evtRecurDays = new Set(days);
-      applyEventFormState();
-      eventsPage.hidden = true;
-      evtPanel.hidden = false;
-      // Swap confirm handler to update mode
-      editingConfirmMode = true;
+      enterEditMode(id);
     });
   });
 }

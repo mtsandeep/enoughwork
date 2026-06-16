@@ -55,11 +55,14 @@
 
     <div class="progress-wrap">
       <div class="event-overflow event-overflow-left" id="event-overflow-left" hidden></div>
-      <div class="progress-bar" id="progress-bar">
-        <svg id="progress-svg" viewBox="0 0 100 6" preserveAspectRatio="none">
-          <rect class="progress-track" x="0" y="0" width="100" height="6" />
-          <rect class="progress-fill" id="progress" x="0" y="0" width="0" height="6" />
-        </svg>
+      <div class="progress-host" id="progress-host">
+        <div class="progress-bar" id="progress-bar">
+          <svg id="progress-svg" viewBox="0 0 100 6" preserveAspectRatio="none">
+            <rect class="progress-track" x="0" y="0" width="100" height="6" />
+            <rect class="progress-fill" id="progress" x="0" y="0" width="0" height="6" />
+          </svg>
+        </div>
+        <div class="event-dots" id="event-dots" aria-hidden="true"></div>
       </div>
       <div class="event-overflow event-overflow-right" id="event-overflow-right" hidden></div>
     </div>
@@ -114,6 +117,17 @@
   <div class="heatmap-tooltip" id="heatmap-tooltip" hidden></div>
   <div class="heatmap-tooltip" id="break-tooltip" hidden></div>
   <div class="heatmap-tooltip" id="event-tooltip" hidden></div>
+
+  <!-- Event dot detail popover -->
+  <div class="event-popover" id="event-popover" hidden>
+    <div class="event-popover-title" id="event-popover-title"></div>
+    <div class="event-popover-meta" id="event-popover-meta"></div>
+    <div class="event-popover-actions">
+      <button class="event-popover-btn" id="event-popover-edit">Edit</button>
+      <button class="event-popover-btn danger" id="event-popover-delete">Delete</button>
+    </div>
+  </div>
+  <div class="event-popover-backdrop" id="event-popover-backdrop" hidden></div>
 
   <!-- Break Picker Page -->
   <div class="break-picker-page" id="break-picker-page" hidden>
@@ -181,6 +195,21 @@
           <button class="break-quick-btn" data-min="20">20m</button>
           <button class="break-quick-btn" data-min="30">30m</button>
           <button class="break-quick-btn" data-min="60">1h</button>
+          <span class="event-break-custom" id="event-break-custom">
+            <button class="break-quick-btn event-break-custom-btn" id="event-break-custom-btn" type="button">
+              <span id="event-break-custom-label">Custom</span>
+              <svg class="event-break-custom-pencil" id="event-break-custom-pencil" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+            <span class="event-break-custom-editor" id="event-break-custom-editor" hidden>
+              <input type="number" class="limit-input limit-input-lg" id="event-break-h-input" min="0" max="3" value="0" />
+              <span class="limit-input-label">h</span>
+              <input type="number" class="limit-input limit-input-lg" id="event-break-m-input" min="0" max="59" value="15" />
+              <span class="limit-input-label">m</span>
+              <button class="limit-btn limit-tick-btn limit-tick-btn-lg" id="event-break-tick" type="button" title="Apply">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </span>
+          </span>
         </div>
       </div>
 
