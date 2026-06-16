@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EnoughWork</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #ffffff;
+      color: #111;
+      user-select: none;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .notify-container {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      height: 100vh;
+      gap: 10px;
+      cursor: grab;
+    }
+    .notify-container:active {
+      cursor: grabbing;
+    }
+    .notify-container button {
+      cursor: pointer;
+    }
+    .notify-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #4f46e5;
+    }
+    .notify-subtitle {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.4;
+    }
+    .notify-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+      justify-content: center;
+    }
+    .notify-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .notify-btn-later {
+      background: transparent;
+      color: #666;
+      border-color: #e5e7eb;
+    }
+    .notify-btn-later:hover {
+      border-color: #999;
+      color: #111;
+    }
+    .notify-btn-download {
+      background: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+    .notify-btn-download:hover {
+      background: #4338ca;
+    }
+    .notify-btn-download.downloading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="notify-container">
+    <div class="notify-title">Update Available</div>
+    <div class="notify-subtitle" id="update-version"></div>
+    <div class="notify-buttons">
+      <button class="notify-btn notify-btn-later" id="btn-later">Later</button>
+      <button class="notify-btn notify-btn-download" id="btn-download">Download &amp; Restart</button>
+    </div>
+  </div>
+  <script>
+    const { invoke } = window.__TAURI__.core;
+    const { emit } = window.__TAURI__.event;
+    const win = window.__TAURI__.window.getCurrentWindow();
+
+    // Show version from URL param
+    const params = new URLSearchParams(window.location.search);
+    const version = params.get("v") || "";
+    document.getElementById("update-version").textContent =
+      version ? `v${version} is ready to download` : "A new version is ready";
+
+    // Self-position via positioner plugin (macOS/Linux fallback)
+    if (params.get("selfpos") === "1") {
+      (async () => {
+        try {
+          await invoke("plugin:positioner|move_window", { position: 3 });
+          const pos = await win.outerPosition();
+          const monitors = await window.__TAURI__.window.availableMonitors();
+          let sf = 1;
+          for (const m of monitors) {
+            if (pos.x >= m.position.x && pos.x < m.position.x + m.size.width &&
+                pos.y >= m.position.y && pos.y < m.position.y + m.size.height) {
+              sf = m.scaleFactor;
+              break;
+            }
+          }
+          const marginPhys = Math.round(16 * sf);
+          await win.setPosition(
+            new window.__TAURI__.dpi.PhysicalPosition(pos.x - marginPhys, pos.y - marginPhys)
+          );
+        } catch (e) {
+          console.warn("Positioner failed:", e);
+        }
+        await win.show();
+      })();
+    }
+
+    // Drag by clicking anywhere except buttons
+    document.querySelector(".notify-container").addEventListener("mousedown", (e) => {
+      if (e.target.closest("button")) return;
+      win.startDragging();
+    });
+
+    // Dismiss
+    document.getElementById("btn-later").addEventListener("click", async () => {
+      await emit("update-dismiss");
+      await win.close();
+    });
+
+    // Download
+    let downloading = false;
+    document.getElementById("btn-download").addEventListener("click", async () => {
+      if (downloading) return;
+      downloading = true;
+      const btn = document.getElementById("btn-download");
+      btn.textContent = "Downloading...";
+      btn.classList.add("downloading");
+      await emit("update-download");
+      // Don't close — main.js will relaunch the app on success
+    });
+  </script>
+</body>
+</html>

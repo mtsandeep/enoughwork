@@ -4,6 +4,41 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-16
+
+### Added
+- Skip today's occurrence of a recurring event (re-arms next scheduled day)
+
+### Changed
+- Internal code reorganization (no behavior changes): split the large source files into focused modules, moved styles into `src/components/`, and grouped the window pages under `src/windows/`
+- CSS cleanup: consolidated duplicated input, icon-button, and toggle styles into shared classes (`src/components/shared.css`), and unified form border weights with the Settings page
+
+### Removed
+- Activity heatmap and 30-day history tracking — the daily work/break history grid and its storage have been removed
+
+## [0.1.8] - 2026-06-14
+
+### Added
+- Events & Scheduled Breaks — schedule future reminders and timed breaks; they appear as markers on the progress bar and trigger a reminder overlay or break countdown at the scheduled time
+- Recurring events & breaks — repeat on selected weekdays (clock-time only); triggers fire only while the timer is running, so missed times while the laptop was off are not backfilled
+- `tauri-plugin-positioner` for cross-platform notification window placement (fixes macOS positioning)
+- Update-available popup notification when a new version is found (dismissed versions remembered per-version)
+
+### Changed
+- Mini notification popup now positions itself at bottom-right via positioner plugin on macOS/Linux (Windows keeps taskbar-aware positioning)
+- Debug "Show Overlay" button now respects the megaphone/quiet mode setting
+
+## [0.1.7] - 2026-05-28
+
+### Changed
+- Heatmap tooltip now shows awake time, work time (matches progress bar), and breaks separately
+
+## [0.1.6] - 2026-05-27
+
+### Fixed
+- Heatmap now respects the configured daily reset time instead of always rolling over at midnight
+- Heatmap days and history update live when the effective day changes (no app restart needed)
+
 ## [0.1.5] - 2026-05-25
 
 ### Fixed

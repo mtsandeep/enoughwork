@@ -1,8 +1,7 @@
 {
   "name": "enoughwork-app",
   "private": true,
-  "packageManager": "pnpm@10.13.1",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "tauri": "tauri",
@@ -21,6 +20,7 @@
     "@floating-ui/dom": "^1.7.6",
     "@tauri-apps/plugin-autostart": "~2.5.1",
     "@tauri-apps/plugin-store": "~2.4.3",
-    "@tauri-apps/plugin-updater": "^2.10.1"
+    "@tauri-apps/plugin-updater": "^2.10.1",
+    "@tauri-apps/plugin-positioner": "~2.3"
   }
 }

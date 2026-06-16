@@ -1,6 +1,13 @@
 mod commands;
+#[cfg(target_os = "windows")]
+mod win32;
+mod persistence;
+mod state;
+mod timer;
 
-use commands::{AppData, load_state, save_state, start_timer};
+use persistence::{load_state, save_state};
+use state::AppData;
+use timer::start_timer;
 use std::sync::Mutex;
 use std::time::Instant;
 use tauri::{
@@ -24,6 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
             // Load saved state from store
             let store = app.store("enoughwork-store.json")?;
@@ -111,13 +119,18 @@ pub fn run() {
             commands::get_autostart,
             commands::is_dev,
             commands::get_version,
-            commands::get_history,
             commands::is_fullscreen_app_running,
             commands::set_quiet_overlay,
             commands::start_break,
             commands::resume_from_break,
             commands::extend_break,
             commands::suggest_break,
+            commands::create_event,
+            commands::update_event,
+            commands::delete_event,
+            commands::dismiss_event,
+            commands::snooze_event,
+            commands::skip_event,
             commands::get_foreground_monitor,
             commands::get_main_work_area,
         ])

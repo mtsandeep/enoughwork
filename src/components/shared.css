@@ -1,0 +1,45 @@
+/* Shared base classes used across components. Loaded before the component
+   files (see styles.css @import order) so that single-class component rules
+   override these on source-order ties.
+   Each component rule keeps only what differs (size, color, layout). */
+
+/* Fixed top-right icon buttons (settings gear, quiet toggle, events list).
+   Each consumer adds its own `right:` offset. */
+.topbar-icon {
+  position: fixed;
+  top: 16px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.15s;
+  z-index: 10;
+}
+
+.topbar-icon:hover {
+  color: var(--text);
+}
+
+/* Number input shell — shared by .limit-input and .break-duration-input.
+   Consumers set width, height, font-size/weight, color, and focus color. */
+.num-input {
+  padding: 0 4px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: var(--radius);
+  font-family: inherit;
+  background: #fff;
+  text-align: center;
+  outline: none;
+  box-sizing: content-box;
+  transition: border-color 0.15s;
+  -moz-appearance: textfield;
+}
+
+.num-input::-webkit-inner-spin-button,
+.num-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

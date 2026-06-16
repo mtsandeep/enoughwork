@@ -13,7 +13,18 @@
   </div>
 
   <div id="app-area">
-  <button class="quiet-icon" id="btn-quiet-overlay" title="Minimal notifications (today only)">
+  <button class="topbar-icon events-list-icon" id="btn-events-list" title="Events today">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2"/>
+      <line x1="3" y1="9" x2="21" y2="9"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <circle cx="16" cy="16.5" r="4"/>
+      <path d="M16 14.7v1.9l1.2 1.2"/>
+    </svg>
+  </button>
+
+  <button class="topbar-icon quiet-icon" id="btn-quiet-overlay" title="Minimal notifications (today only)">
     <svg id="quiet-icon-on" width="22" height="22" viewBox="0 0 505.259 505.259">
       <g transform="translate(1 13)">
         <path style="fill:#FF7474" d="M157.72,94.607l204.8,204.8c0,0-46.08,1.707-94.72,24.747l0,0L137.24,192.74l-0.853-0.853 C158.573,143.247,157.72,94.607,157.72,94.607z M153.453,423.14L153.453,423.14l-24.747,24.747 c-13.653,13.653-34.987,13.653-48.64,0L68.12,435.94l-5.973,5.973c-3.413,3.413-8.533,3.413-11.947,0l-29.867-29.867 c-3.413-3.413-3.413-8.533,0-11.947l5.973-5.973L14.36,382.181c-13.653-13.653-13.653-34.987,0-48.64l23.893-23.893L153.453,423.14 z"/>
@@ -32,7 +43,7 @@
     </svg>
   </button>
 
-  <button class="settings-gear" id="settings-gear" title="Settings">
+  <button class="topbar-icon settings-gear" id="settings-gear" title="Settings">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -44,11 +55,18 @@
       <div class="elapsed-time" id="elapsed">0h 00m 00s</div>
     </div>
 
-    <div class="progress-bar" id="progress-bar">
-      <svg id="progress-svg" viewBox="0 0 100 6" preserveAspectRatio="none">
-        <rect class="progress-track" x="0" y="0" width="100" height="6" />
-        <rect class="progress-fill" id="progress" x="0" y="0" width="0" height="6" />
-      </svg>
+    <div class="progress-wrap">
+      <div class="event-overflow event-overflow-left" id="event-overflow-left" hidden></div>
+      <div class="progress-host" id="progress-host">
+        <div class="progress-bar" id="progress-bar">
+          <svg id="progress-svg" viewBox="0 0 100 6" preserveAspectRatio="none">
+            <rect class="progress-track" x="0" y="0" width="100" height="6" />
+            <rect class="progress-fill" id="progress" x="0" y="0" width="0" height="6" />
+          </svg>
+        </div>
+        <div class="event-dots" id="event-dots" aria-hidden="true"></div>
+      </div>
+      <div class="event-overflow event-overflow-right" id="event-overflow-right" hidden></div>
     </div>
 
     <div class="snooze-bar" id="snooze-bar" hidden>
@@ -65,9 +83,9 @@
         <div class="limit-value" id="limit-value">
           <span class="limit-display" id="limit-display">4h 00m</span>
           <span class="limit-edit" id="limit-edit" hidden>
-            <input type="number" class="limit-input" id="limit-input-h" min="0" max="23" value="4" />
+            <input type="number" class="num-input limit-input" id="limit-input-h" min="0" max="23" value="4" />
             <span class="limit-input-label">h</span>
-            <input type="number" class="limit-input" id="limit-input-m" min="0" max="59" value="0" />
+            <input type="number" class="num-input limit-input" id="limit-input-m" min="0" max="59" value="0" />
             <span class="limit-input-label">m</span>
           </span>
           <div class="limit-error" id="limit-error" hidden>Invalid time, minimum 1 min</div>
@@ -79,7 +97,13 @@
       </div>
 
       <div class="btn-group">
-        <button class="btn" id="btn-snooze" hidden>Snooze 30m</button>
+        <button class="event-add-btn" id="btn-event-add" title="Schedule an event">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button class="btn btn-snooze" id="btn-snooze" hidden>Snooze 30m</button>
         <button class="btn btn-break" id="btn-take-break">Take Break</button>
         <button class="btn btn-danger" id="btn-stop">Stop for today</button>
         <button class="btn" id="btn-resume" hidden>Resume</button>
@@ -88,12 +112,25 @@
       <div class="break-stats" id="break-stats" hidden></div>
       <button class="btn btn-break" id="btn-resume-break" hidden>Resume Work</button>
     </div>
-
-    <div class="heatmap" id="heatmap"></div>
   </div>
 
-  <div class="heatmap-tooltip" id="heatmap-tooltip" hidden></div>
   <div class="heatmap-tooltip" id="break-tooltip" hidden></div>
+  <div class="heatmap-tooltip" id="event-tooltip" hidden></div>
+  <div class="heatmap-tooltip" id="ui-tooltip" hidden></div>
+
+  <!-- Event dot detail popover -->
+  <div class="event-popover" id="event-popover" hidden>
+    <div class="event-popover-title" id="event-popover-title">
+      <span id="event-popover-title-text"></span>
+      <button class="event-popover-skip" id="event-popover-skip" hidden data-tooltip="Skip for today"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+    </div>
+    <div class="event-popover-meta" id="event-popover-meta"></div>
+    <div class="event-popover-actions">
+      <button class="event-popover-btn" id="event-popover-edit">Edit</button>
+      <button class="event-popover-btn danger" id="event-popover-delete">Delete</button>
+    </div>
+  </div>
+  <div class="event-popover-backdrop" id="event-popover-backdrop" hidden></div>
 
   <!-- Break Picker Page -->
   <div class="break-picker-page" id="break-picker-page" hidden>
@@ -111,7 +148,7 @@
         <div class="break-duration-row" id="break-duration-row">
           <span class="break-duration-display" id="break-duration-display">15m</span>
           <span class="break-duration-edit" id="break-duration-edit" hidden>
-            <input type="number" class="break-duration-input" id="break-input-m" min="1" max="120" value="15" />
+            <input type="number" class="num-input break-duration-input" id="break-input-m" min="1" max="120" value="15" />
             <span class="limit-input-label">min</span>
           </span>
         </div>
@@ -127,6 +164,119 @@
       </div>
 
       <button class="btn btn-start-break" id="btn-start-break">Start Break</button>
+    </div>
+  </div>
+
+  <!-- Quick Add Event Form -->
+  <div class="event-add-panel" id="event-add-panel" hidden>
+    <div class="event-add-header">
+      <span class="event-add-title">Schedule Event</span>
+      <button class="settings-close" id="event-add-close" title="Close">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="event-add-body">
+      <div class="event-type-toggle" id="event-type-toggle">
+        <button class="event-type-btn active" data-type="reminder"><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Reminder</button>
+        <button class="event-type-btn" data-type="break"><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Scheduled Break</button>
+      </div>
+
+      <div class="event-field" id="event-title-field">
+        <label class="event-field-label">Title</label>
+        <input type="text" class="event-input" id="event-title-input" placeholder="e.g. Standup" maxlength="60" />
+      </div>
+
+      <div class="event-field" id="event-duration-field" hidden>
+        <label class="event-field-label">Break duration</label>
+        <div class="event-quick-picks" id="event-break-picks">
+          <button class="break-quick-btn" data-min="5">5m</button>
+          <button class="break-quick-btn" data-min="10">10m</button>
+          <button class="break-quick-btn active" data-min="15">15m</button>
+          <button class="break-quick-btn" data-min="20">20m</button>
+          <button class="break-quick-btn" data-min="30">30m</button>
+          <button class="break-quick-btn" data-min="60">1h</button>
+          <span class="event-break-custom" id="event-break-custom">
+            <button class="break-quick-btn event-break-custom-btn" id="event-break-custom-btn" type="button">
+              <span id="event-break-custom-label">Custom</span>
+              <svg class="event-break-custom-pencil" id="event-break-custom-pencil" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+            <span class="event-break-custom-editor" id="event-break-custom-editor" hidden>
+              <input type="number" class="num-input limit-input limit-input-lg" id="event-break-h-input" min="0" max="3" value="0" />
+              <span class="limit-input-label">h</span>
+              <input type="number" class="num-input limit-input limit-input-lg" id="event-break-m-input" min="0" max="59" value="15" />
+              <span class="limit-input-label">m</span>
+              <button class="limit-btn limit-tick-btn limit-tick-btn-lg" id="event-break-tick" type="button" title="Apply">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div class="event-field" id="event-overlay-field">
+        <label class="event-field-label">Notification</label>
+        <div class="event-pill-row" id="event-overlay-toggle">
+          <button class="event-pill-btn active" data-overlay="fullscreen">Fullscreen</button>
+          <button class="event-pill-btn" data-overlay="mini">Mini</button>
+        </div>
+      </div>
+
+      <div class="event-field">
+        <div class="event-time-header">
+          <label class="event-field-label">When</label>
+          <button class="event-mode-btn" id="event-mode-btn">at HH:MM</button>
+        </div>
+        <div class="event-time-inputs">
+          <div class="event-time-clock" id="event-time-clock">
+            <input type="time" class="event-input event-input-time" id="event-clock-input" />
+          </div>
+          <div class="event-time-relative" id="event-time-relative" hidden>
+            <div class="limit-setting">
+              <button class="limit-btn" id="event-rel-down" type="button">−</button>
+              <div class="limit-value" id="event-rel-value">
+                <span class="limit-display" id="event-rel-display">0h 30m</span>
+                <span class="limit-edit" id="event-rel-edit" hidden>
+                  <input type="number" class="num-input limit-input" id="event-rel-h-input" min="0" max="23" value="0" />
+                  <span class="limit-input-label">h</span>
+                  <input type="number" class="num-input limit-input" id="event-rel-m-input" min="0" max="59" value="30" />
+                  <span class="limit-input-label">m</span>
+                </span>
+              </div>
+              <button class="limit-btn" id="event-rel-up" type="button">+</button>
+              <button class="limit-btn limit-tick-btn" id="event-rel-tick" type="button" hidden title="Apply">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-field" id="event-recurring-field" hidden>
+        <div class="settings-row">
+          <span class="event-field-label">Repeat</span>
+          <label class="toggle">
+            <input type="checkbox" id="event-recurring-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="event-day-picks" id="event-day-picks" hidden>
+          <button class="event-day-btn" data-day="1">Mon</button>
+          <button class="event-day-btn" data-day="2">Tue</button>
+          <button class="event-day-btn" data-day="3">Wed</button>
+          <button class="event-day-btn" data-day="4">Thu</button>
+          <button class="event-day-btn" data-day="5">Fri</button>
+          <button class="event-day-btn" data-day="6">Sat</button>
+          <button class="event-day-btn" data-day="0">Sun</button>
+        </div>
+      </div>
+
+      <div class="event-add-actions">
+        <button class="btn" id="event-add-cancel">Cancel</button>
+        <button class="btn btn-primary" id="event-add-confirm">Schedule</button>
+      </div>
     </div>
   </div>
 
@@ -210,6 +360,26 @@
       <span class="settings-update-status" id="update-status" hidden></span>
     </div>
   </div>
+
+  <!-- Events List Page -->
+  <div class="settings-page events-page" id="events-page" hidden>
+    <div class="settings-header">
+      <span class="settings-title">Today's Events</span>
+      <button class="settings-close" id="events-back" title="Close">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="settings-body events-body">
+      <div class="events-add-row">
+        <button class="btn events-add-btn" id="events-add-reminder"><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Reminder</button>
+        <button class="btn btn-break events-add-btn" id="events-add-break"><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Scheduled Break</button>
+      </div>
+      <div class="events-list" id="events-list"></div>
+    </div>
+  </div>
   </div><!-- end #app-area -->
 
   <div class="debug-bar" hidden>
@@ -221,6 +391,7 @@
       <button class="debug-btn" id="dbg-1min">1m Limit</button>
       <button class="debug-btn" id="dbg-1min-snooze">1m Snooze</button>
       <button class="debug-btn" id="dbg-1min-break">1m Break</button>
+      <button class="debug-btn" id="dbg-1min-event">1m Reminder</button>
       <button class="debug-btn debug-btn-danger" id="dbg-clear">Clear State</button>
     </div>
   </div>

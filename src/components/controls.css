@@ -1,0 +1,161 @@
+/* Controls: buttons, limit picker, break stats */
+
+/* Controls section */
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.limit-setting {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.limit-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid #e5e7eb;
+  background: var(--bg);
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  transition: all 0.15s;
+}
+
+.limit-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.limit-btn[hidden] {
+  display: none;
+}
+
+.limit-tick-btn {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.limit-tick-btn:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.limit-value {
+  font-size: 28px;
+  font-weight: 600;
+  min-width: 100px;
+  text-align: center;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  transition: background 0.15s;
+}
+
+.limit-value:hover {
+  background: var(--accent-light);
+}
+
+.limit-value.editing {
+  cursor: default;
+  background: transparent;
+}
+
+.limit-value.editing:hover {
+  background: transparent;
+}
+
+.limit-display {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+}
+
+.limit-display[hidden] {
+  display: none;
+}
+
+.limit-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+}
+
+.limit-edit[hidden] {
+  display: none;
+}
+
+.limit-input {
+  width: 48px;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+  height: 28px;
+}
+
+.limit-input:focus {
+  border-color: var(--accent);
+}
+
+/* Break-duration custom field: narrower inputs (32px wide) */
+.limit-input-lg {
+  width: 32px;
+}
+
+/* Break-duration custom field: tick sized for the narrower 32px inputs */
+.limit-tick-btn-lg {
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
+}
+
+.limit-input-label {
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.limit-error {
+  font-size: 12px;
+  color: var(--danger);
+  text-align: center;
+  margin-top: 2px;
+}
+
+.limit-error[hidden] {
+  display: none;
+}
+
+/* ===== Break Stats ===== */
+.break-stats {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.break-stats[hidden] {
+  display: none;
+}
+
+/* ===== Break Button ===== */
+.btn-break {
+  color: #0d9488;
+  border-color: #99f6e4;
+}
+
+.btn-break:hover {
+  background: #f0fdfa;
+  border-color: #0d9488;
+}

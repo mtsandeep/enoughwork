@@ -1,0 +1,130 @@
+/* Timer display, progress bar, snooze bar, status text */
+
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 48px 40px 16px;
+  gap: 28px;
+}
+
+.timer-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.elapsed-time {
+  font-size: 72px;
+  font-weight: 700;
+  letter-spacing: -3px;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.limit-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.limit-label {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.limit-text {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-host {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.progress-bar {
+  width: 100%;
+  max-width: 400px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.progress-track {
+  fill: #e5e7eb;
+}
+
+.progress-fill {
+  fill: var(--accent);
+  transition: width 1s linear;
+}
+
+.progress-fill.over-limit {
+  fill: var(--danger);
+}
+
+.progress-break {
+  fill: #99f6e4;
+  opacity: 0.8;
+  transition: width 1s linear, x 1s linear;
+  cursor: pointer;
+}
+
+.progress-break:hover {
+  opacity: 1;
+}
+
+.status-text {
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  min-height: 24px;
+}
+
+.status-active {
+  color: var(--accent);
+}
+
+.status-snoozed {
+  color: #f59e0b;
+}
+
+.status-stopped {
+  color: var(--danger);
+}
+
+/* ===== Snooze Bar ===== */
+.snooze-bar {
+  width: 100%;
+  max-width: 400px;
+}
+
+.snooze-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.snooze-progress-fill {
+  height: 100%;
+  background: #f59e0b;
+  border-radius: 3px;
+  transition: width 1s linear;
+}

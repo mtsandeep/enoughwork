@@ -18,24 +18,14 @@ EnoughWork isn't meant to lock you down. It's a nudge to help you notice how lon
 
 ## Features
 
-- **Daily screen time tracking** — counts seconds while the screen is active, pauses during sleep/hibernate
-- **Configurable limit** — set your daily limit in hours and minutes (default: 8h)
-- **Fullscreen alert overlay** — appears on all monitors when limit is reached, stays on top of everything
-- **Breaks** — take breaks with a circular countdown overlay, smart duration suggestion, extend/resume controls, and supercharging mode for extra rest
-- **Snooze** — extend working time in 30-minute increments (cumulative)
-- **Stop for today** — stop tracking entirely until the next day, with a resume option
-- **Quiet mode** — mini notification popup instead of fullscreen overlay (useful during meetings)
-- **Activity heatmap** — 30-day colored grid showing daily work and break totals
-- **Progress bar** — shows work progress with break segments at correct positions
-- **Auto-check update** — checks for new versions on startup and every 4 hours, badge notification when available
-- **Fullscreen app detection** — adapts overlay behavior when games or presentations are running
-- **Star Drop animation** — subtle animated notification for fullscreen apps
-- **Multi-monitor support** — overlays appear on all connected monitors
-- **System tray** — minimizes to tray on close, tray icon with show/quit menu
-- **Auto-start on boot** — launches automatically when Windows starts
-- **Single instance** — prevents duplicate windows, focuses existing one
-- **Persistent state** — saves progress to disk every 60 seconds, survives app restarts
-- **Daily reset** — timer resets at configurable time (default: midnight)
+- **A daily limit you'll actually notice** — set your hours (default: 8h); when you hit it, a fullscreen overlay covers every monitor and stays on top until you deal with it
+- **Take real breaks** — start a break with a countdown ring, a sensible duration suggested from how long you've been working, and extend/resume controls
+- **Schedule the things you keep forgetting** — set a reminder or a timed break for "12:30 lunch" or "in 2h", optionally repeating on weekdays
+- **Your call to keep going or stop** — snooze in 30-minute steps, or stop for today and resume tomorrow
+- **Quiet mode for meetings** — swap the fullscreen overlay for a small popup when a wall of windows would be rude
+- **Resets when your day does** — daily reset at a time you choose (default midnight), so night-shift hours count the right way
+
+It also stays out of your way: runs from the system tray, starts on boot, keeps one instance, survives restarts, auto-updates, and drops to a gentle animation when you're in a game or fullscreen app.
 
 See [docs/features.md](docs/features.md) for detailed feature documentation and behavior.
 
@@ -45,18 +35,21 @@ See [docs/features.md](docs/features.md) for detailed feature documentation and 
   <img src="screenshots/enoughwork-app.jpg" width="300" alt="Main window" />
   &nbsp;&nbsp;
   <img src="screenshots/enoughwork-settings.jpg" width="300" alt="Settings" />
+</p>
+<p align="center">
+  <img src="screenshots/enoughwork-events.jpg" width="300" alt="Today's events" />
   &nbsp;&nbsp;
   <img src="screenshots/enoughwork-take-break.jpg" width="300" alt="Take break picker" />
 </p>
 <p align="center">
-  <img src="screenshots/enoughwork-break-overlay.jpg" width="300" alt="Break countdown overlay" />
+  <img src="screenshots/enoughwork-overlay.jpg" width="300" alt="Limit reached overlay" />
   &nbsp;&nbsp;
-  <img src="screenshots/enoughwork-break-recharged-overlay.jpg" width="300" alt="Break recharged overlay" />
+  <img src="screenshots/enoughwork-mini-notifications.jpg" width="300" alt="Quiet mode notifications" />
 </p>
 <p align="center">
-  <img src="screenshots/enoughwork-overlay.jpg" width="400" alt="Limit reached overlay" />
+  <img src="screenshots/enoughwork-event-overlay.jpg" width="300" alt="Event reminder overlay" />
   &nbsp;&nbsp;
-  <img src="screenshots/enoughwork-mini-notifications.jpg" width="400" alt="Quiet mode notifications" />
+  <img src="screenshots/enoughwork-break-recharged-overlay.jpg" width="300" alt="Break recharged overlay" />
 </p>
 
 ## Tech stack
@@ -107,18 +100,27 @@ This will:
 
 ```
 src/
-  main.js              # Main window logic + settings + heatmap + overlays
-  styles.css           # All styles
+  main.js              # Main window: render loop, limit controls, action buttons
+  state.js             # Shared state holder, Tauri globals, helpers
+  overlays.js          # Overlay windows (limit, break, event-notify, notify)
+  progress-bar.js      # Progress bar markers, event dots, dot popover
+  schedule.js          # Quick-add event form + events list page
+  break-picker.js      # Break picker page
+  settings.js          # Settings page + auto-update
   window-utils.js      # Multi-monitor DPI-aware positioning
-  overlay.html/js      # Fullscreen limit-reached overlay
-  break-countdown.html/js  # Break countdown overlay with ring
-  notify.html          # Quiet mode notification popup
-  animation.html       # Star Drop animation
+  styles.css           # Root styles + @imports components/
+  components/          # Component CSS (timer, controls, schedule, etc.)
+  windows/             # Secondary window pages (overlay, break-countdown, etc.)
 src-tauri/src/
   lib.rs               # App setup, tray, plugins, window management
-  commands.rs          # Tauri commands + background timer + state + settings
+  commands.rs          # Tauri commands (thin wrappers)
+  state.rs             # State structs + date/recurring helpers
+  persistence.rs       # Store I/O (state, settings)
+  timer.rs             # Background tick loop
+  win32.rs             # Windows FFI (fullscreen detection, monitors)
   main.rs              # Binary entry point
 docs/
   features.md          # Detailed feature documentation
+  events-reminders.md  # Events & scheduled breaks implementation
   planning/            # Feature planning docs
 ```

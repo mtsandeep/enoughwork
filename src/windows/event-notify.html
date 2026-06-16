@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EnoughWork</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* Theme: dark for fullscreen, light for mini popup */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #fff;
+      user-select: none;
+      overflow: hidden;
+    }
+    body.mini {
+      background: #ffffff;
+      color: #111;
+      border-radius: 12px;
+    }
+
+    .event-container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 24px;
+      padding: 40px;
+    }
+    body.mini .event-container {
+      height: 100vh;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .event-label {
+      font-size: 16px;
+      color: #fde047;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    body.mini .event-label {
+      font-size: 13px;
+      color: #ca8a04;
+    }
+
+    .event-title {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      max-width: 900px;
+    }
+    body.mini .event-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: 0;
+    }
+
+    .event-time {
+      font-size: 18px;
+      color: #9ca3af;
+    }
+    body.mini .event-time {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .event-buttons {
+      display: flex;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .event-btn {
+      padding: 14px 36px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .event-btn-snooze {
+      background: transparent;
+      color: #9ca3af;
+      border-color: #374151;
+    }
+    .event-btn-snooze:hover {
+      border-color: #6b7280;
+      color: #fff;
+    }
+    .event-btn-ok {
+      background: #fde047;
+      color: #1f2937;
+      border-color: #fde047;
+    }
+    .event-btn-ok:hover {
+      background: #facc15;
+      border-color: #facc15;
+    }
+
+    body.mini .event-btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    body.mini .event-btn-snooze {
+      color: #666;
+      border-color: #e5e7eb;
+    }
+    body.mini .event-btn-snooze:hover {
+      border-color: #999;
+      color: #111;
+    }
+    body.mini .event-btn-ok {
+      background: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+    body.mini .event-btn-ok:hover {
+      background: #4338ca;
+      border-color: #4338ca;
+    }
+  </style>
+</head>
+<body>
+  <div class="event-container" id="event-container">
+    <div class="event-label">Reminder</div>
+    <div class="event-title" id="event-title">&ZeroWidthSpace;</div>
+    <div class="event-time" id="event-time"></div>
+    <div class="event-buttons">
+      <button class="event-btn event-btn-snooze" id="btn-snooze">Snooze 5m</button>
+      <button class="event-btn event-btn-ok" id="btn-ok">OK</button>
+    </div>
+  </div>
+  <script type="module" src="../event-notify.js"></script>
+</body>
+</html>
