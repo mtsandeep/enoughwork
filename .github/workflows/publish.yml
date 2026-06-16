@@ -53,7 +53,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - uses: pnpm/action-setup@v4
+      - name: Enable pnpm via Corepack (latest)
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
 
       - uses: actions/setup-node@v4
         with:

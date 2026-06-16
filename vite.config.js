@@ -21,6 +21,8 @@ export default {
         notify: resolve(__dirname, "src/windows/notify.html"),
         overlay: resolve(__dirname, "src/windows/overlay.html"),
         "break-countdown": resolve(__dirname, "src/windows/break-countdown.html"),
+        "event-notify": resolve(__dirname, "src/windows/event-notify.html"),
+        "update-notify": resolve(__dirname, "src/windows/update-notify.html"),
       },
     },
   },
