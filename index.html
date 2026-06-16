@@ -13,7 +13,7 @@
   </div>
 
   <div id="app-area">
-  <button class="events-list-icon" id="btn-events-list" title="Events today">
+  <button class="topbar-icon events-list-icon" id="btn-events-list" title="Events today">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="4" width="18" height="17" rx="2"/>
       <line x1="3" y1="9" x2="21" y2="9"/>
@@ -22,7 +22,7 @@
     </svg>
   </button>
 
-  <button class="quiet-icon" id="btn-quiet-overlay" title="Minimal notifications (today only)">
+  <button class="topbar-icon quiet-icon" id="btn-quiet-overlay" title="Minimal notifications (today only)">
     <svg id="quiet-icon-on" width="22" height="22" viewBox="0 0 505.259 505.259">
       <g transform="translate(1 13)">
         <path style="fill:#FF7474" d="M157.72,94.607l204.8,204.8c0,0-46.08,1.707-94.72,24.747l0,0L137.24,192.74l-0.853-0.853 C158.573,143.247,157.72,94.607,157.72,94.607z M153.453,423.14L153.453,423.14l-24.747,24.747 c-13.653,13.653-34.987,13.653-48.64,0L68.12,435.94l-5.973,5.973c-3.413,3.413-8.533,3.413-11.947,0l-29.867-29.867 c-3.413-3.413-3.413-8.533,0-11.947l5.973-5.973L14.36,382.181c-13.653-13.653-13.653-34.987,0-48.64l23.893-23.893L153.453,423.14 z"/>
@@ -41,7 +41,7 @@
     </svg>
   </button>
 
-  <button class="settings-gear" id="settings-gear" title="Settings">
+  <button class="topbar-icon settings-gear" id="settings-gear" title="Settings">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -81,9 +81,9 @@
         <div class="limit-value" id="limit-value">
           <span class="limit-display" id="limit-display">4h 00m</span>
           <span class="limit-edit" id="limit-edit" hidden>
-            <input type="number" class="limit-input" id="limit-input-h" min="0" max="23" value="4" />
+            <input type="number" class="num-input limit-input" id="limit-input-h" min="0" max="23" value="4" />
             <span class="limit-input-label">h</span>
-            <input type="number" class="limit-input" id="limit-input-m" min="0" max="59" value="0" />
+            <input type="number" class="num-input limit-input" id="limit-input-m" min="0" max="59" value="0" />
             <span class="limit-input-label">m</span>
           </span>
           <div class="limit-error" id="limit-error" hidden>Invalid time, minimum 1 min</div>
@@ -142,7 +142,7 @@
         <div class="break-duration-row" id="break-duration-row">
           <span class="break-duration-display" id="break-duration-display">15m</span>
           <span class="break-duration-edit" id="break-duration-edit" hidden>
-            <input type="number" class="break-duration-input" id="break-input-m" min="1" max="120" value="15" />
+            <input type="number" class="num-input break-duration-input" id="break-input-m" min="1" max="120" value="15" />
             <span class="limit-input-label">min</span>
           </span>
         </div>

@@ -99,26 +99,10 @@
 
 .limit-input {
   width: 48px;
-  padding: 0 4px;
-  border: 2px solid #e5e7eb;
-  border-radius: var(--radius);
   font-size: 24px;
   font-weight: 600;
-  font-family: inherit;
   color: var(--text);
-  background: #fff;
-  text-align: center;
-  outline: none;
   height: 28px;
-  box-sizing: content-box;
-  transition: border-color 0.15s;
-  -moz-appearance: textfield;
-}
-
-.limit-input::-webkit-inner-spin-button,
-.limit-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 
 .limit-input:focus {

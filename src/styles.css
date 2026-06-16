@@ -4,6 +4,7 @@
    Order matters where cascade is load-bearing: settings.css must load before
    schedule.css because .events-page shares the .settings-page base class. */
 
+@import "./components/shared.css";
 @import "./components/timer.css";
 @import "./components/controls.css";
 @import "./components/break-picker.css";

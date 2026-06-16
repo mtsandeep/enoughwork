@@ -63,23 +63,8 @@
 
 /* ===== Quiet Icon ===== */
 .quiet-icon {
-  position: fixed;
-  top: 16px;
   right: 52px;
-  background: none;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  color: var(--muted);
-  padding: 6px;
-  border-radius: 8px;
-  transition: all 0.15s;
-  z-index: 10;
   overflow: visible;
-}
-
-.quiet-icon:hover {
-  color: var(--text);
 }
 
 .quiet-icon.active {
@@ -92,21 +77,7 @@
 
 /* ===== Events List Icon (next to megaphone) ===== */
 .events-list-icon {
-  position: fixed;
-  top: 16px;
   right: 88px;
-  background: none;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  color: var(--muted);
-  padding: 6px;
-  border-radius: 8px;
-  transition: all 0.15s;
-  z-index: 10;
-}
-.events-list-icon:hover {
-  color: var(--text);
 }
 
 /* ===== Quick-add event icon (before Take Break) ===== */

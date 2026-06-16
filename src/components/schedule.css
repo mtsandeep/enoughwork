@@ -199,7 +199,9 @@
 .event-type-btn:hover {
   border-color: var(--accent);
 }
-.event-type-btn.active {
+.event-type-btn.active,
+.event-day-btn.active,
+.event-pill-btn.active {
   background: var(--accent-light);
   border-color: var(--accent);
   color: var(--accent);
@@ -296,11 +298,6 @@
 .event-day-btn:hover {
   border-color: var(--accent);
 }
-.event-day-btn.active {
-  background: var(--accent-light);
-  color: var(--accent);
-  border-color: var(--accent);
-}
 
 .event-pill-row {
   display: flex;
@@ -319,11 +316,6 @@
   font-family: inherit;
 }
 .event-pill-btn:hover {
-  border-color: var(--accent);
-}
-.event-pill-btn.active {
-  background: var(--accent-light);
-  color: var(--accent);
   border-color: var(--accent);
 }
 
