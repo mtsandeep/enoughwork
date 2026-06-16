@@ -1,0 +1,133 @@
+/* Overlay window, quiet icon, top-bar icons, event list/add icons */
+
+/* ===== Overlay Window ===== */
+.overlay-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #0f0f1a;
+  color: #ffffff;
+  padding: 40px;
+  gap: 40px;
+}
+
+.overlay-title {
+  font-size: 72px;
+  font-weight: 800;
+  letter-spacing: -2px;
+}
+
+.overlay-subtitle {
+  font-size: 24px;
+  color: #a0a0b8;
+  text-align: center;
+}
+
+.overlay-buttons {
+  display: flex;
+  gap: 20px;
+}
+
+.overlay-btn {
+  padding: 16px 36px;
+  border-radius: var(--radius);
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.overlay-btn-stop {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.overlay-btn-stop:hover {
+  background: #4338ca;
+}
+
+.overlay-btn-snooze {
+  background: transparent;
+  color: #a0a0b8;
+  border-color: #3a3a4e;
+}
+
+.overlay-btn-snooze:hover {
+  border-color: #a0a0b8;
+  color: white;
+}
+
+/* ===== Quiet Icon ===== */
+.quiet-icon {
+  position: fixed;
+  top: 16px;
+  right: 52px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.15s;
+  z-index: 10;
+  overflow: visible;
+}
+
+.quiet-icon:hover {
+  color: var(--text);
+}
+
+.quiet-icon.active {
+  color: var(--accent);
+}
+
+.quiet-icon [hidden] {
+  display: none !important;
+}
+
+/* ===== Events List Icon (next to megaphone) ===== */
+.events-list-icon {
+  position: fixed;
+  top: 16px;
+  right: 88px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.15s;
+  z-index: 10;
+}
+.events-list-icon:hover {
+  color: var(--text);
+}
+
+/* ===== Quick-add event icon (before Take Break) ===== */
+.event-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius);
+  border: 2px dashed #d1d5db;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.event-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+  border-style: solid;
+}

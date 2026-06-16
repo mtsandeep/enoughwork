@@ -1,0 +1,79 @@
+/* Activity heatmap: grid + tooltips */
+
+/* ===== Activity Heatmap ===== */
+.heatmap {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 0 0 8px;
+  position: relative;
+}
+
+.heatmap-square {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #e5e7eb;
+  cursor: default;
+  transition: transform 0.15s ease;
+}
+
+.heatmap-square:hover {
+  transform: scale(1.4);
+  z-index: 1;
+}
+
+.heatmap-tooltip {
+  position: fixed;
+  background: #1e1e2e;
+  color: #f0f0f5;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  line-height: 1.5;
+  top: 0;
+  left: 0;
+}
+
+.heatmap-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e1e2e;
+}
+
+.heatmap-tooltip .tt-date {
+  color: #a0a0b8;
+  font-size: 11px;
+}
+
+.heatmap-tooltip .tt-time {
+  font-weight: 600;
+}
+
+.heatmap-tooltip .tt-label {
+  color: #a0a0b8;
+  font-size: 11px;
+}
+
+.heatmap-green {
+  background: #22c55e;
+}
+
+.heatmap-orange {
+  background: #f59e0b;
+}
+
+.heatmap-red {
+  background: #ef4444;
+}

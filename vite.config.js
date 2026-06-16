@@ -17,10 +17,10 @@ export default {
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        animation: resolve(__dirname, "src/animation.html"),
-        notify: resolve(__dirname, "src/notify.html"),
-        overlay: resolve(__dirname, "src/overlay.html"),
-        "break-countdown": resolve(__dirname, "src/break-countdown.html"),
+        animation: resolve(__dirname, "src/windows/animation.html"),
+        notify: resolve(__dirname, "src/windows/notify.html"),
+        overlay: resolve(__dirname, "src/windows/overlay.html"),
+        "break-countdown": resolve(__dirname, "src/windows/break-countdown.html"),
       },
     },
   },

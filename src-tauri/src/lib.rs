@@ -1,6 +1,13 @@
 mod commands;
+#[cfg(target_os = "windows")]
+mod win32;
+mod persistence;
+mod state;
+mod timer;
 
-use commands::{AppData, load_state, save_state, start_timer};
+use persistence::{load_state, save_state};
+use state::AppData;
+use timer::start_timer;
 use std::sync::Mutex;
 use std::time::Instant;
 use tauri::{
