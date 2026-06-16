@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-16
+
 ### Added
 - Skip today's occurrence of a recurring event (re-arms next scheduled day)
 
