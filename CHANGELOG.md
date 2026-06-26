@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-26
+
 ### Fixed
 - Update notification popup: download button stuck at "Downloading..." and window not draggable — `update-notify*` was missing from the capabilities window glob list
 
