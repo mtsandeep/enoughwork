@@ -28,7 +28,7 @@ pub fn run() {
                 let _ = w.set_focus();
             }
         }))
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().args(["--autostart"]).build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
@@ -42,6 +42,16 @@ pub fn run() {
                 state: Mutex::new(saved),
                 last_save: Mutex::new(Instant::now()),
             });
+
+            // Migrate any pre-existing autostart registration so it carries the --autostart arg.
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let mgr = app.autolaunch();
+                if let Ok(true) = mgr.is_enabled() {
+                    let _ = mgr.disable();
+                    let _ = mgr.enable();
+                }
+            }
 
             // System tray
             let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
@@ -91,6 +101,12 @@ pub fn run() {
             // Hide to tray on close instead of quitting
             let handle = app.handle().clone();
             let main_window = app.get_webview_window("main").unwrap();
+            // When launched by the OS at boot (autostart entry carries --autostart), keep hidden.
+            // Manual launches (no --autostart arg) show normally.
+            let launched_at_boot = std::env::args().any(|a| a == "--autostart");
+            if launched_at_boot {
+                let _ = main_window.hide();
+            }
             main_window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
