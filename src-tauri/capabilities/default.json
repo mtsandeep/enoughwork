@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "overlay*", "anim*", "notify*", "event-notify*", "break-notify*"],
+  "windows": ["main", "overlay*", "anim*", "notify*", "event-notify*", "break-notify*", "update-notify*"],
   "permissions": [
     "core:default",
     "core:window:default",
