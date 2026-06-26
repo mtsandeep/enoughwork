@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-26
+
 ### Added
 - Start minimized when auto-launched at boot — the app now starts hidden to the system tray when opened by the OS autostart entry, instead of showing a window. Manual launches (double-click, Start menu, etc.) still show the window normally. Existing autostart registrations are migrated automatically on the next launch.
 
