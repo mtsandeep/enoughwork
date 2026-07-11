@@ -67,13 +67,25 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
 
     let x; // percentage position on bar (elapsed / limit)
     const triggered = ev.triggered;
+    // Missed: marked done without ever firing (e.g. laptop was off past the
+    // recurring window). No elapsed_at_trigger → no teal segment / real place
+    // on the bar; treat as left overflow (before the work axis).
+    const missed = triggered && ev.elapsed_at_trigger == null;
+
+    if (missed) {
+      leftCount++;
+      leftTitles.push(formatEventTitle(ev));
+      continue;
+    }
 
     if (triggered && ev.elapsed_at_trigger != null) {
       // Already fired: place at the elapsed time captured at trigger
       x = limit_secs > 0 ? (ev.elapsed_at_trigger / limit_secs) * 100 : 0;
     } else {
-      // Upcoming: estimate elapsed time at trigger (~1:1 with wall-clock)
-      const secsUntil = Math.max(0, ev.trigger_at - now);
+      // Upcoming (or past-but-not-yet-marked): estimate elapsed at trigger
+      // (~1:1 with wall-clock). Allow negative secsUntil so a clock time
+      // before any work lands left of the bar (x < 0 → left +N).
+      const secsUntil = ev.trigger_at - now;
       const estElapsed = elapsed_secs + secsUntil;
       x = limit_secs > 0 ? (estElapsed / limit_secs) * 100 : 200;
     }
@@ -90,8 +102,9 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
       continue;
     }
 
-    // A triggered break already has a teal .progress-break segment (sized by
-    // its duration), so a dot would be redundant — skip it.
+    // A fired break already has a teal .progress-break segment (sized by its
+    // duration), so a dot would be redundant — skip it. Missed breaks are
+    // handled above as left overflow, not here.
     if (triggered && ev.event_type === "break") continue;
 
     // Reuse the existing dot for this event if present, else create one.
