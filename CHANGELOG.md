@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-11
+
 ### Fixed
 - Missed/past scheduled events (e.g. a break whose time passed while the laptop was off) now show as a left `+N` badge on the progress bar instead of vanishing or sitting on the current fill
 
