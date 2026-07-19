@@ -8,15 +8,17 @@ EnoughWork tracks your daily screen time and nudges you to step away when you've
 
 ## Daily Work Timer
 
-Tracks active screen time from the moment the app starts. The timer ticks every second while the computer is awake.
+Tracks active screen time from the moment the app starts. The timer ticks every second while the computer is awake and unlocked.
 
 - **Sleep detection** — the timer pauses automatically when the computer sleeps or hibernates (any gap > 30 seconds is skipped)
+- **Lock detection** — the timer pauses while the OS session is locked (Win+L / lock screen). Supported on Windows, macOS, and Linux
 - **Daily reset** — all stats reset at a configurable time (default: midnight). You can set this to any time (e.g., 6:00 AM for night shift workers — work done before 6 AM counts as the previous day)
 - **Persistent** — state is saved to disk every 60 seconds and survives app restarts
 
 ### Limitations
 
-- The timer counts wall-clock active time, not per-app or per-window usage. It's a general "screen is on" metric.
+- The timer counts wall-clock unlocked time, not per-app or per-window usage. It's a general "you're at the computer" metric.
+- On Linux, lock detection depends on the desktop environment exposing the standard screensaver/logind lock signals; uncommon setups may not pause.
 
 ---
 

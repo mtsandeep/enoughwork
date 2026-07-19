@@ -4,6 +4,9 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Work timer pauses while the OS session is locked — locked time no longer counts toward elapsed work
+
 ## [0.2.3] - 2026-07-11
 
 ### Fixed

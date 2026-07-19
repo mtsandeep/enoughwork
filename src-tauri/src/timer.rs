@@ -5,7 +5,8 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
 
 /// Background tick: increments elapsed_secs if active, detects sleep via time gaps,
-/// saves state periodically, and emits events when limit is reached.
+/// pauses while the OS session is locked, saves state periodically, and emits events
+/// when limit is reached.
 pub fn start_timer(app_handle: tauri::AppHandle) {
     let ah = app_handle.clone();
     std::thread::spawn(move || {
@@ -52,13 +53,17 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 break_ended_emitted = false;
             }
 
-            // Active time always tracks when laptop is awake, regardless of status
-            if delta.as_secs() <= 30 {
+            // Skip time while asleep (tick gap) or while the OS session is locked
+            let session_locked = crate::session_lock::is_session_locked();
+            let should_count = delta.as_secs() <= 30 && !session_locked;
+
+            // Active time tracks when the laptop is awake and unlocked
+            if should_count {
                 state.active_secs += 1;
             }
 
             // elapsed_secs ticks for both "active" and "on_break" (timer doesn't pause during break)
-            if (state.status == "active" || state.status == "on_break") && delta.as_secs() <= 30 {
+            if (state.status == "active" || state.status == "on_break") && should_count {
                 state.elapsed_secs += 1;
 
                 let limit_secs = state.limit_mins * 60;

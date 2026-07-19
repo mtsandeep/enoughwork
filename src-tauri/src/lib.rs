@@ -1,4 +1,5 @@
 mod commands;
+mod session_lock;
 #[cfg(target_os = "windows")]
 mod win32;
 mod persistence;
