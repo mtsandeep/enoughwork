@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-19
+
 ### Added
 - Work timer pauses while the OS session is locked — locked time no longer counts toward elapsed work
 - Gray `+N` badge for events missed while the system was not active (locked, asleep, stopped, or app off)
