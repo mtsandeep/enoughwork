@@ -32,12 +32,19 @@ mod windows {
     const WTS_CURRENT_SERVER_HANDLE: *mut c_void = std::ptr::null_mut();
     const WTS_CURRENT_SESSION: u32 = 0xFFFF_FFFF;
     const WTS_SESSION_INFO_EX: u32 = 25;
-    // Win8.1+: 0 = locked, 1 = unlocked. (Values were swapped on older Windows.)
+    // Win8+: 0 = locked, 1 = unlocked, -1 = unknown.
+    // (Values were swapped on Windows 7 / Server 2008 R2.)
     const WTS_SESSIONSTATE_LOCK: i32 = 0;
+    const WTS_SESSIONSTATE_UNKNOWN: i32 = -1;
 
+    /// Prefix of `WTSINFOEXW` + `WTSINFOEX_LEVEL1`.
+    /// `Data` is 8-byte-aligned (contains `LARGE_INTEGER`), so there are 4
+    /// padding bytes after `Level`. Without that pad we mis-read `SessionState`
+    /// (WTSActive == 0) as locked and the timer never advances.
     #[repr(C)]
     struct WtsInfoExHeader {
         level: u32,
+        _pad: u32,
         _session_id: u32,
         _session_state: u32,
         session_flags: i32,
@@ -69,12 +76,16 @@ mod windows {
             if ok == 0 || buffer.is_null() {
                 return false;
             }
-            let locked = {
+            // Default unknown — LOCK is 0, so never treat missing/partial data as locked.
+            let mut session_flags = WTS_SESSIONSTATE_UNKNOWN;
+            {
                 let info = &*(buffer as *const WtsInfoExHeader);
-                info.level == 1 && info.session_flags == WTS_SESSIONSTATE_LOCK
-            };
+                if info.level == 1 {
+                    session_flags = info.session_flags;
+                }
+            }
             WTSFreeMemory(buffer);
-            locked
+            session_flags == WTS_SESSIONSTATE_LOCK
         }
     }
 }

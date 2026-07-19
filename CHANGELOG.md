@@ -4,6 +4,9 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Work timer stuck at 0 after session-lock pause: Windows lock detection mis-read `WTSActive` as locked due to missing struct padding
+
 ## [0.2.4] - 2026-07-19
 
 ### Added
