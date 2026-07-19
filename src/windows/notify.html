@@ -85,65 +85,6 @@
       <button class="notify-btn notify-btn-stop" id="btn-stop">Stop for today</button>
     </div>
   </div>
-  <script>
-    const { invoke } = window.__TAURI__.core;
-    const { emit } = window.__TAURI__.event;
-    const win = window.__TAURI__.window.getCurrentWindow();
-
-    invoke("get_settings").then(settings => {
-      document.getElementById("notify-title").textContent = settings.overlay_title;
-      document.getElementById("notify-subtitle").textContent = settings.overlay_subtitle;
-    });
-
-    // Self-position via positioner plugin (macOS/Linux fallback)
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("selfpos") === "1") {
-      (async () => {
-        try {
-          // Move to bottom-right of current monitor (position 3 = BottomRight)
-          await invoke("plugin:positioner|move_window", { position: 3 });
-
-          // Nudge by 16px margin
-          const pos = await win.outerPosition();
-          const monitors = await window.__TAURI__.window.availableMonitors();
-          let sf = 1;
-          for (const m of monitors) {
-            if (pos.x >= m.position.x && pos.x < m.position.x + m.size.width &&
-                pos.y >= m.position.y && pos.y < m.position.y + m.size.height) {
-              sf = m.scaleFactor;
-              break;
-            }
-          }
-          const marginPhys = Math.round(16 * sf);
-          await win.setPosition(
-            new window.__TAURI__.dpi.PhysicalPosition(pos.x - marginPhys, pos.y - marginPhys)
-          );
-        } catch (e) {
-          console.warn("Positioner failed:", e);
-        }
-        await win.show();
-      })();
-    }
-
-    // Drag by clicking anywhere except buttons
-    document.querySelector(".notify-container").addEventListener("mousedown", (e) => {
-      if (e.target.closest("button")) return;
-      window.__TAURI__.window.getCurrentWindow().startDragging();
-    });
-
-    let acted = false;
-    document.getElementById("btn-snooze").addEventListener("click", async () => {
-      if (acted) return;
-      acted = true;
-      await invoke("snooze", { minutes: 30 });
-      await emit("close-overlay");
-    });
-    document.getElementById("btn-stop").addEventListener("click", async () => {
-      if (acted) return;
-      acted = true;
-      await invoke("stop_for_today");
-      await emit("close-overlay");
-    });
-  </script>
+  <script type="module" src="../notify.js"></script>
 </body>
 </html>

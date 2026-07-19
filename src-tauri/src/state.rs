@@ -28,6 +28,23 @@ pub struct ScheduledEvent {
     pub recurred_today: bool,          // recurring: already fired this calendar day
     #[serde(default)]
     pub trigger_minute: Option<u32>,   // recurring: minute-of-day (HH*60+MM) to recompute trigger_at daily
+    /// Why a silent miss happened: "before_work" | "inactive" | "replaced"
+    #[serde(default)]
+    pub miss_reason: Option<String>,
+}
+
+/// What interrupt UI was last active (break / reminder / limit), for next-day welcome.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveInterrupt {
+    pub kind: String,          // "break" | "reminder" | "limit"
+    pub label: String,         // human-readable, e.g. reminder title
+    pub event_id: Option<u32>,
+}
+
+/// Shown once after a day rollover that interrupted an in-progress session.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DayWelcome {
+    pub last_label: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,6 +80,10 @@ pub struct TimerState {
     pub events: Vec<ScheduledEvent>,
     #[serde(default)]
     pub next_event_id: u32,
+    #[serde(default)]
+    pub active_interrupt: Option<ActiveInterrupt>,
+    #[serde(default)]
+    pub pending_welcome: Option<DayWelcome>,
 }
 
 impl Default for TimerState {
@@ -86,7 +107,81 @@ impl Default for TimerState {
             break_segments: Vec::new(),
             events: Vec::new(),
             next_event_id: 1,
+            active_interrupt: None,
+            pending_welcome: None,
         }
+    }
+}
+
+/// Miss reason when an event could not fire: no counted time yet vs system not active.
+pub fn miss_reason_for_elapsed(elapsed_secs: u64) -> String {
+    if elapsed_secs == 0 {
+        "before_work".into()
+    } else {
+        "inactive".into()
+    }
+}
+
+pub fn event_display_label(ev: &ScheduledEvent) -> String {
+    if !ev.title.trim().is_empty() {
+        return ev.title.clone();
+    }
+    if ev.event_type == "break" {
+        "a break".into()
+    } else {
+        "a reminder".into()
+    }
+}
+
+/// Mark an armed event as silently missed (no overlay, no elapsed_at_trigger).
+pub fn mark_event_missed(ev: &mut ScheduledEvent, reason: &str) {
+    ev.triggered = true;
+    ev.recurred_today = true;
+    ev.snoozed_until = None;
+    ev.elapsed_at_trigger = None;
+    ev.miss_reason = Some(reason.to_string());
+}
+
+/// End an in-progress break, recording only the time that actually counted down
+/// (works with freeze-by-extending `break_until` during lock/sleep).
+pub fn finalize_break(state: &mut TimerState, now_ts: i64) {
+    if state.status != "on_break" {
+        return;
+    }
+    let actual = break_counted_secs(state, now_ts);
+    if actual > 0 || state.break_started_at.is_some() {
+        state.total_break_secs += actual;
+        let elapsed_at_start = state.elapsed_secs.saturating_sub(actual);
+        state.break_segments.push(BreakSegment {
+            active_at_start: elapsed_at_start,
+            duration: actual,
+        });
+        state.break_count += 1;
+    }
+    state.last_break_ended_at = Some(now_ts);
+    state.break_until = None;
+    state.break_started_at = None;
+    state.break_duration_secs = 0;
+    if state
+        .active_interrupt
+        .as_ref()
+        .map(|a| a.kind == "break")
+        .unwrap_or(false)
+    {
+        state.active_interrupt = None;
+    }
+}
+
+fn break_counted_secs(state: &TimerState, now_ts: i64) -> u64 {
+    match (state.break_until, state.break_duration_secs) {
+        (Some(until), dur) if dur > 0 => {
+            let remaining = (until - now_ts).max(0) as u64;
+            dur.saturating_sub(remaining).min(dur)
+        }
+        (_, _) => state
+            .break_started_at
+            .map(|started| (now_ts - started).max(0) as u64)
+            .unwrap_or(0),
     }
 }
 
@@ -173,7 +268,8 @@ pub const RECUR_WINDOW_SECS: i64 = 60;
 ///    but triggered=false), which kept showing "due now" in the UI.
 ///  - dormant (triggered=true, recurred_today=false): leave alone — that's a
 ///    non-scheduled weekday or a not-yet-rearmed rollover state, not "missed".
-pub fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64) {
+pub fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64, elapsed_secs: u64) {
+    let reason = miss_reason_for_elapsed(elapsed_secs);
     for ev in events.iter_mut() {
         if ev.recurring_days.is_empty() {
             continue; // one-time events are handled elsewhere
@@ -188,8 +284,7 @@ pub fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64)
             continue;
         }
         if now_ts >= ev.trigger_at + RECUR_WINDOW_SECS {
-            ev.recurred_today = true;
-            ev.triggered = true;
+            mark_event_missed(ev, &reason);
         }
     }
 }
@@ -209,6 +304,7 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
         ev.recurred_today = false;
         ev.snoozed_until = None;
         ev.elapsed_at_trigger = None;
+        ev.miss_reason = None;
 
         if !ev.recurring_days.contains(&today_weekday) {
             // Not scheduled today → stays dormant, but advance trigger_at to the
@@ -232,7 +328,8 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
     // Any event armed for today whose time has already passed (e.g. app
     // opened late in the day with the timer stopped) is marked done now so
     // the UI doesn't show "due now" for the rest of the day.
-    mark_missed_recurring_done(events, now_ts);
+    // elapsed is 0 on a fresh day → before_work.
+    mark_missed_recurring_done(events, now_ts, 0);
 }
 
 /// Compute the next datetime at which a recurring event should fire, given its
@@ -273,13 +370,31 @@ pub fn next_recurring_trigger(recurring_days: &[u8], trigger_minute: Option<u32>
 
 /// Reset all per-day fields when the effective date rolls over.
 ///
+/// If a break/reminder/limit interrupt was still active, sets `pending_welcome`
+/// and leaves status as `stopped` so the UI can greet the user before starting.
+///
 /// Extracted because `get_state` and the timer tick loop had this block
 /// duplicated verbatim.
 pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) {
+    let welcome = state.active_interrupt.as_ref().map(|ai| DayWelcome {
+        last_label: ai.label.clone(),
+    }).or_else(|| {
+        if state.status == "on_break" {
+            Some(DayWelcome {
+                last_label: "a break".into(),
+            })
+        } else if state.status == "limit_reached" || state.status == "snoozed" {
+            Some(DayWelcome {
+                last_label: "Enough Work".into(),
+            })
+        } else {
+            None
+        }
+    });
+
     state.date = today.to_string();
     state.elapsed_secs = 0;
     state.active_secs = 0;
-    state.status = "active".into();
     state.snooze_until = None;
     state.snooze_started_at = None;
     state.total_snooze_secs = 0;
@@ -291,5 +406,14 @@ pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) {
     state.break_count = 0;
     state.last_break_ended_at = None;
     state.break_segments.clear();
+    state.active_interrupt = None;
     rollover_events_for_new_day(&mut state.events);
+
+    if let Some(w) = welcome {
+        state.pending_welcome = Some(w);
+        state.status = "stopped".into();
+    } else {
+        state.pending_welcome = None;
+        state.status = "active".into();
+    }
 }

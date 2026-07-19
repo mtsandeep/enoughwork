@@ -52,10 +52,12 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
 
   // Position = fraction of elapsed axis (the same axis the blue fill uses).
   // For upcoming events, estimate the elapsed time at trigger using a simple
-  // rate of 1 elapsed-sec per wall-clock sec (timer doesn't pause except on stop).
+  // rate of 1 elapsed-sec per wall-clock sec while time is running.
   let leftCount = 0;
+  let inactiveCount = 0;
   let rightCount = 0;
   const leftTitles = [];
+  const inactiveTitles = [];
   const rightTitles = [];
   const dots = []; // {el, pct}
 
@@ -67,14 +69,19 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
 
     let x; // percentage position on bar (elapsed / limit)
     const triggered = ev.triggered;
-    // Missed: marked done without ever firing (e.g. laptop was off past the
-    // recurring window). No elapsed_at_trigger → no teal segment / real place
-    // on the bar; treat as left overflow (before the work axis).
+    // Missed: marked done without ever firing. Split by reason:
+    // inactive/replaced → gray +N; before_work / legacy → amber left +N.
     const missed = triggered && ev.elapsed_at_trigger == null;
 
     if (missed) {
-      leftCount++;
-      leftTitles.push(formatEventTitle(ev));
+      const reason = ev.miss_reason || "before_work";
+      if (reason === "inactive" || reason === "replaced") {
+        inactiveCount++;
+        inactiveTitles.push(formatEventTitle(ev));
+      } else {
+        leftCount++;
+        leftTitles.push(formatEventTitle(ev));
+      }
       continue;
     }
 
@@ -139,7 +146,15 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
 
   // Overflow badges
   const leftBadge = $("#event-overflow-left");
+  const inactiveBadge = $("#event-overflow-inactive");
   const rightBadge = $("#event-overflow-right");
+  if (inactiveCount > 0) {
+    inactiveBadge.textContent = `+${inactiveCount}`;
+    inactiveBadge.title = "Missed while system not active\n" + inactiveTitles.join("\n");
+    inactiveBadge.hidden = false;
+  } else {
+    inactiveBadge.hidden = true;
+  }
   if (leftCount > 0) {
     leftBadge.textContent = `+${leftCount}`;
     leftBadge.title = leftTitles.join("\n");

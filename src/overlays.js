@@ -1,6 +1,86 @@
-import { state, invoke, listen, WebviewWindow } from "./state.js";
+import { state, invoke, listen, emit, emitTo, WebviewWindow } from "./state.js";
 import { render } from "./main.js";
 import { getMainWorkArea, bottomRightPosition, getMonitors } from "./window-utils.js";
+
+function allInterruptWindows() {
+  const list = [];
+  for (const w of overlayWindows) list.push(w);
+  for (const w of breakOverlayWindows) list.push(w);
+  for (const w of eventNotifyWindows) list.push(w);
+  if (notifyWindow) list.push(notifyWindow);
+  if (animWindow) list.push(animWindow);
+  return list;
+}
+
+function hasOpenInterruptWindows() {
+  return allInterruptWindows().length > 0;
+}
+
+function delay(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Wait until a webview has been created (or timeout). */
+async function waitWindowCreated(w, timeoutMs = 4000) {
+  try {
+    await Promise.race([
+      w.once("tauri://created"),
+      delay(timeoutMs),
+    ]);
+  } catch (_) {}
+}
+
+/**
+ * Broadcast day-welcome to every interrupt window by label (emitTo) plus a
+ * global emit, with retries so late-loading monitors still morph.
+ */
+async function broadcastDayWelcome(lastLabel) {
+  const payload = { last_label: lastLabel || "yesterday's session" };
+  const windows = allInterruptWindows();
+
+  // Wait for freshly spawned webviews to exist
+  await Promise.all(windows.map((w) => waitWindowCreated(w)));
+  // Give JS modules time to register listen("day-welcome")
+  await delay(200);
+
+  const send = async () => {
+    try { await emit("day-welcome", payload); } catch (_) {}
+    for (const w of windows) {
+      const label = w.label;
+      if (!label) continue;
+      try { await emitTo(label, "day-welcome", payload); } catch (_) {}
+    }
+  };
+
+  await send();
+  await delay(300);
+  await send();
+  await delay(600);
+  await send();
+}
+
+/**
+ * Morph leftover interrupt windows into the day greeting.
+ * If none are open (closed / crash / restart), skip — no new window.
+ */
+export async function presentDayWelcomeIfOverlayOpen(lastLabel) {
+  if (!hasOpenInterruptWindows()) {
+    // No leftover UI — clear pending welcome and start a normal day.
+    if (state.current?.pending_welcome) {
+      state.current = await invoke("dismiss_day_welcome");
+      render();
+    }
+    return false;
+  }
+  await broadcastDayWelcome(lastLabel);
+  return true;
+}
+
+/** Debug helper: open limit overlays on all monitors, then morph reliably. */
+export async function demoDayWelcome(lastLabel = "Stand up stretch") {
+  await openOverlay();
+  await broadcastDayWelcome(lastLabel);
+}
 
 // ===== Break Overlay Window =====
 // Owned here because overlays manages all window lifecycle. Declared at
@@ -85,6 +165,8 @@ let overlayWindows = [];
 let animWindow = null;
 let notifyWindow = null;
 let animSafetyTimeout = null;
+// Declared early so closeAllOverlays can clear it (reminder id set below).
+let showingReminderId = null;
 
 export async function closeAllOverlays() {
   for (const w of overlayWindows) {
@@ -107,6 +189,7 @@ export async function closeAllOverlays() {
     try { await w.close(); } catch {}
   }
   eventNotifyWindows = [];
+  showingReminderId = null;
   if (animSafetyTimeout) {
     clearTimeout(animSafetyTimeout);
     animSafetyTimeout = null;
@@ -317,6 +400,39 @@ function eventNotifyUrl(ev, mode) {
   return `src/windows/event-notify.html?id=${ev.id}&title=${title}&mode=${mode}&at=${ev.trigger_at}`;
 }
 
+/** Close whatever interrupt is up so the next one can take the screen. */
+async function prepareInterruptReplace() {
+  // End an in-progress break as done (manual or scheduled).
+  if (state.current?.status === "on_break") {
+    state.current = await invoke("resume_from_break");
+    await closeBreakOverlay();
+  }
+  // Unacknowledged reminder → silent miss
+  if (showingReminderId != null) {
+    const id = showingReminderId;
+    showingReminderId = null;
+    state.current = await invoke("mark_event_missed", { id, reason: "replaced" });
+    await closeEventNotify();
+  }
+  // Limit / notify / anim windows
+  for (const w of overlayWindows) {
+    try { await w.close(); } catch {}
+  }
+  overlayWindows = [];
+  if (animWindow) {
+    try { await animWindow.close(); } catch {}
+    animWindow = null;
+  }
+  if (notifyWindow) {
+    try { await notifyWindow.close(); } catch {}
+    notifyWindow = null;
+  }
+  if (animSafetyTimeout) {
+    clearTimeout(animSafetyTimeout);
+    animSafetyTimeout = null;
+  }
+}
+
 async function openEventNotifyFullscreen(ev) {
   eventNotifyId++;
   const url = eventNotifyUrl(ev, "fullscreen");
@@ -398,28 +514,36 @@ async function closeEventNotify() {
     try { await w.close(); } catch {}
   }
   eventNotifyWindows = [];
+  showingReminderId = null;
 }
 
-// Rust emits this when an event's time arrives
+// Rust emits this when an event's time arrives (only while time is running)
 listen("event-triggered", async (event) => {
   const ev = event.payload;
+  await prepareInterruptReplace();
+
   if (ev.event_type === "break") {
-    // Scheduled break fires → start the break countdown flow
-    state.current = await invoke("start_break", { durationSecs: ev.duration_secs });
+    state.current = await invoke("start_break", {
+      durationSecs: ev.duration_secs,
+      label: ev.title || "a break",
+      eventId: ev.id,
+    });
     render();
   } else {
-    // Reminder → overlay (fullscreen or mini)
+    showingReminderId = ev.id;
     if (ev.overlay_type === "mini") {
       await openEventNotifyMini(ev);
     } else {
       await openEventNotifyFullscreen(ev);
     }
+    render();
   }
 });
 
 // Reminder overlay actions
 listen("event-dismiss", async (event) => {
   const { id } = event.payload;
+  showingReminderId = null;
   state.current = await invoke("dismiss_event", { id });
   await closeEventNotify();
   render();
@@ -427,7 +551,28 @@ listen("event-dismiss", async (event) => {
 
 listen("event-snooze", async (event) => {
   const { id } = event.payload;
+  showingReminderId = null;
   state.current = await invoke("snooze_event", { id });
   await closeEventNotify();
+  render();
+});
+
+// Day rollover: morph leftover interrupt windows into the greeting.
+// If nothing is open, skip greeting entirely.
+listen("day-rolled", async (event) => {
+  showingReminderId = null;
+  const welcome = event.payload;
+  if (welcome && (welcome.last_label || welcome.lastLabel)) {
+    await presentDayWelcomeIfOverlayOpen(welcome.last_label || welcome.lastLabel);
+  } else if (hasOpenInterruptWindows()) {
+    // Clean day but stale windows — just close them
+    await closeAllOverlays();
+  }
+});
+
+listen("day-welcome-start", async () => {
+  showingReminderId = null;
+  state.current = await invoke("dismiss_day_welcome");
+  await closeAllOverlays();
   render();
 });

@@ -8,7 +8,7 @@ export const $ = (sel) => document.querySelector(sel);
 export const state = { current: null };
 
 export const { invoke } = window.__TAURI__.core;
-export const { listen, emit } = window.__TAURI__.event;
+export const { listen, emit, emitTo } = window.__TAURI__.event;
 export const { WebviewWindow } = window.__TAURI__.webviewWindow;
 
 // App constants — change these to update repo url

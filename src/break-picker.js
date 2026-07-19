@@ -109,6 +109,10 @@ $("#btn-start-break").addEventListener("click", async () => {
     closeBreakDurationEdit();
   }
   $("#break-picker-page").hidden = true;
-  state.current = await invoke("start_break", { durationSecs: breakDurationMin * 60 });
+  state.current = await invoke("start_break", {
+    durationSecs: breakDurationMin * 60,
+    label: null,
+    eventId: null,
+  });
   render();
 });

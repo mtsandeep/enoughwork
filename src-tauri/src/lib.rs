@@ -147,6 +147,8 @@ pub fn run() {
             commands::delete_event,
             commands::dismiss_event,
             commands::snooze_event,
+            commands::mark_event_missed_cmd,
+            commands::dismiss_day_welcome,
             commands::skip_event,
             commands::get_foreground_monitor,
             commands::get_main_work_area,

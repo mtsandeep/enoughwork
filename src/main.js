@@ -4,7 +4,14 @@
 
 import { $, state, invoke, listen, emit, formatTime } from "./state.js";
 import { renderEventMarkers } from "./progress-bar.js";
-import { openOverlay, closeAllOverlays, openBreakOverlay, closeBreakOverlay } from "./overlays.js";
+import {
+  openOverlay,
+  closeAllOverlays,
+  openBreakOverlay,
+  closeBreakOverlay,
+  presentDayWelcomeIfOverlayOpen,
+  demoDayWelcome,
+} from "./overlays.js";
 import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate } from "./settings.js";
 import "./break-picker.js";
 import "./schedule.js";
@@ -27,10 +34,11 @@ function render() {
   const { elapsed_secs, limit_mins, status, snooze_until } = state.current;
   const limit_secs = limit_mins * 60;
 
-  // Open/close break overlay on status change
+  // Open/close break overlay on status change.
+  // Skip close when pending_welcome — leftover break window is morphing to greeting.
   const isOnBreak = status === "on_break";
   if (isOnBreak && !prevBreakStatus) openBreakOverlay();
-  if (!isOnBreak && prevBreakStatus) closeBreakOverlay();
+  if (!isOnBreak && prevBreakStatus && !state.current.pending_welcome) closeBreakOverlay();
   prevBreakStatus = isOnBreak;
 
   // Broadcast break-tick to overlay windows
@@ -342,6 +350,12 @@ $("#btn-resume").addEventListener("click", async () => {
   render();
 });
 
+listen("day-rolled", async () => {
+  // Prevent render from closing leftover break windows before morph.
+  prevBreakStatus = false;
+  await refreshState();
+});
+
 $("#btn-quiet-overlay").addEventListener("click", async () => {
   const newVal = !(state.current?.quiet_overlay || false);
   state.current = await invoke("set_quiet_overlay", { enabled: newVal });
@@ -410,8 +424,17 @@ $("#dbg-show-anim").addEventListener("click", async () => {
 
 // Debug: 1 min break
 $("#dbg-1min-break").addEventListener("click", async () => {
-  state.current = await invoke("start_break", { durationSecs: 60 });
+  state.current = await invoke("start_break", {
+    durationSecs: 60,
+    label: null,
+    eventId: null,
+  });
   render();
+});
+
+// Debug: open limit overlays on all monitors, then morph each into the greeting
+$("#dbg-day-welcome")?.addEventListener("click", async () => {
+  await demoDayWelcome("Stand up stretch");
 });
 
 // Debug: 1 min reminder (fullscreen)
@@ -433,6 +456,12 @@ setInterval(refreshState, 1000);
 // Initial load — script is at end of body, DOM is ready
 (async () => {
   await refreshState();
+
+  // Crash/restart: pending_welcome only matters if an interrupt window survived
+  // (it won't). Clear it so we don't leave the day stuck on "stopped".
+  if (state.current?.pending_welcome) {
+    await presentDayWelcomeIfOverlayOpen(state.current.pending_welcome.last_label);
+  }
 
   const dev = await invoke("is_dev");
   if (dev) {

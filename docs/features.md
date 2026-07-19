@@ -8,17 +8,22 @@ EnoughWork tracks your daily screen time and nudges you to step away when you've
 
 ## Daily Work Timer
 
-Tracks active screen time from the moment the app starts. The timer ticks every second while the computer is awake and unlocked.
+Tracks active screen time from the moment the app starts. The timer ticks every second while the computer is awake, unlocked, and tracking.
 
 - **Sleep detection** — the timer pauses automatically when the computer sleeps or hibernates (any gap > 30 seconds is skipped)
 - **Lock detection** — the timer pauses while the OS session is locked (Win+L / lock screen). Supported on Windows, macOS, and Linux
+- **Break freeze** — an in-progress break countdown freezes during lock/sleep and continues when you return the same day
+- **Events only while counting** — reminders and scheduled breaks fire only while time is running. If they become due while locked, asleep, stopped, or the app was off, they are marked missed (gray `+N`) with no overlay
+- **Interrupt replace** — a newer event replaces whatever is on screen; the previous break ends as done, an unacknowledged reminder is marked missed
+- **Next-day greeting** — if a break/reminder/limit overlay was still on screen when the day rolls over, that same window switches to a Good morning/afternoon/evening greeting (“Yesterday paused on ….” / “Welcome to a fresh new day!”) with **Lets Start**. If the overlay was already closed (or the app restarted), no greeting is shown
 - **Daily reset** — all stats reset at a configurable time (default: midnight). You can set this to any time (e.g., 6:00 AM for night shift workers — work done before 6 AM counts as the previous day)
 - **Persistent** — state is saved to disk every 60 seconds and survives app restarts
 
 ### Limitations
 
-- The timer counts wall-clock unlocked time, not per-app or per-window usage. It's a general "you're at the computer" metric.
+- The timer counts unlocked tracking time, not per-app or per-window usage.
 - On Linux, lock detection depends on the desktop environment exposing the standard screensaver/logind lock signals; uncommon setups may not pause.
+- Missed-while-away events appear in the gray `+N` before the bar (not on the elapsed fill), because locked time has no place on that axis.
 
 ---
 

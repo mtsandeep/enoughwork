@@ -1,4 +1,8 @@
+import { listenForDayWelcome } from "./day-welcome-ui.js";
+
 const { emit, listen } = window.__TAURI__.event;
+
+listenForDayWelcome({ mini: false, variant: "overlay" });
 
 let acted = false;
 

@@ -1,22 +1,28 @@
+import { listenForDayWelcome } from "./day-welcome-ui.js";
+
 const { invoke } = window.__TAURI__.core;
 const { emit } = window.__TAURI__.event;
 
+listenForDayWelcome({ mini: false, variant: "overlay" });
+
 // Load custom overlay text
 invoke("get_settings").then(settings => {
-  document.getElementById("overlay-title").textContent = settings.overlay_title;
-  document.getElementById("overlay-subtitle").textContent = settings.overlay_subtitle;
+  const title = document.getElementById("overlay-title");
+  const subtitle = document.getElementById("overlay-subtitle");
+  if (title) title.textContent = settings.overlay_title;
+  if (subtitle) subtitle.textContent = settings.overlay_subtitle;
 });
 
 let acted = false;
 
-document.getElementById("btn-snooze").addEventListener("click", async () => {
+document.getElementById("btn-snooze")?.addEventListener("click", async () => {
   if (acted) return;
   acted = true;
   await invoke("snooze", { minutes: 30 });
   await emit("close-overlay");
 });
 
-document.getElementById("btn-stop").addEventListener("click", async () => {
+document.getElementById("btn-stop")?.addEventListener("click", async () => {
   if (acted) return;
   acted = true;
   await invoke("stop_for_today");

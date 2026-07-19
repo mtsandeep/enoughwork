@@ -6,6 +6,14 @@ All notable changes to EnoughWork will be documented in this file.
 
 ### Added
 - Work timer pauses while the OS session is locked — locked time no longer counts toward elapsed work
+- Gray `+N` badge for events missed while the system was not active (locked, asleep, stopped, or app off)
+- Next-day greeting replaces a leftover break/reminder/limit overlay (same window) — only if that overlay was still open; no greeting after close/crash/restart
+- Interrupt replace: a newer break or reminder replaces the current one; previous break ends as done, unacknowledged reminder marked missed
+
+### Changed
+- Events fire only while time is counting; dues during lock/sleep/stopped become silent misses (no overlay on unlock)
+- Break countdown freezes across lock/sleep and continues when you return (same day)
+- One-time events use the same 60s fire window as recurring (no late backfill)
 
 ## [0.2.3] - 2026-07-11
 

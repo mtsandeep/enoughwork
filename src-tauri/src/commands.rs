@@ -6,8 +6,9 @@
 
 use crate::persistence::{get_reset_time, load_settings};
 use crate::state::{
-    effective_date, mark_missed_recurring_done, reset_state_for_new_day, BreakSegment,
-    BreakSuggestion, ScheduledEvent, TimerState, AppData,
+    effective_date, finalize_break, mark_event_missed, mark_missed_recurring_done,
+    reset_state_for_new_day, ActiveInterrupt, BreakSuggestion, ScheduledEvent, TimerState,
+    AppData,
 };
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
@@ -22,18 +23,26 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
 
     if state.date != today {
         reset_state_for_new_day(&mut state, &today);
+        let welcome = state.pending_welcome.clone();
+        drop(state);
+        let _ = app_handle.emit("day-rolled", &welcome);
+        return app_handle.state::<AppData>().state.lock().unwrap().clone();
     }
 
     if state.status == "snoozed" {
         if let Some(until) = state.snooze_until {
             let now_ts = chrono::Local::now().timestamp();
             if now_ts >= until {
+                // Don't force the limit overlay from a poll — timer loop handles
+                // showing it only while time is running.
                 state.status = "limit_reached".into();
                 state.snooze_until = None;
                 state.snooze_started_at = None;
-                drop(state);
-                let _ = app_handle.emit("show-overlay", ());
-                return app_handle.state::<AppData>().state.lock().unwrap().clone();
+                state.active_interrupt = Some(ActiveInterrupt {
+                    kind: "limit".into(),
+                    label: "Enough Work".into(),
+                    event_id: None,
+                });
             }
         }
     }
@@ -43,7 +52,8 @@ pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {
     // when the timer is idle and the tick loop isn't running.
     {
         let now_ts = chrono::Local::now().timestamp();
-        mark_missed_recurring_done(&mut state.events, now_ts);
+        let elapsed = state.elapsed_secs;
+        mark_missed_recurring_done(&mut state.events, now_ts, elapsed);
     }
 
     state.clone()
@@ -91,9 +101,16 @@ pub fn resume_tracking(app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
 
+    state.pending_welcome = None;
+
     // If already past limit, go to limit_reached not active
     if state.elapsed_secs >= state.limit_mins * 60 {
         state.status = "limit_reached".into();
+        state.active_interrupt = Some(ActiveInterrupt {
+            kind: "limit".into(),
+            label: "Enough Work".into(),
+            event_id: None,
+        });
         let _ = app_handle.emit("show-overlay", ());
     } else {
         state.status = "active".into();
@@ -128,7 +145,12 @@ pub fn set_quiet_overlay(enabled: bool, app_handle: tauri::AppHandle) -> TimerSt
 }
 
 #[tauri::command]
-pub fn start_break(duration_secs: u64, app_handle: tauri::AppHandle) -> TimerState {
+pub fn start_break(
+    duration_secs: u64,
+    label: Option<String>,
+    event_id: Option<u32>,
+    app_handle: tauri::AppHandle,
+) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
     let now_ts = chrono::Local::now().timestamp();
@@ -136,6 +158,14 @@ pub fn start_break(duration_secs: u64, app_handle: tauri::AppHandle) -> TimerSta
     state.break_until = Some(now_ts + duration_secs as i64);
     state.break_started_at = Some(now_ts);
     state.break_duration_secs = duration_secs;
+    let label = label
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "a break".into());
+    state.active_interrupt = Some(ActiveInterrupt {
+        kind: "break".into(),
+        label,
+        event_id,
+    });
     state.clone()
 }
 
@@ -144,26 +174,16 @@ pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
     let now_ts = chrono::Local::now().timestamp();
-
-    // Record actual break time taken
-    if let Some(started) = state.break_started_at {
-        let actual = (now_ts - started) as u64;
-        state.total_break_secs += actual;
-        let elapsed_at_start = state.elapsed_secs.saturating_sub(actual);
-        state.break_segments.push(BreakSegment {
-            active_at_start: elapsed_at_start,
-            duration: actual,
-        });
-    }
-    state.break_count += 1;
-    state.last_break_ended_at = Some(now_ts);
-    state.break_until = None;
-    state.break_started_at = None;
-    state.break_duration_secs = 0;
+    finalize_break(&mut state, now_ts);
 
     // If past limit, go to limit_reached; otherwise active
     if state.elapsed_secs >= state.limit_mins * 60 {
         state.status = "limit_reached".into();
+        state.active_interrupt = Some(ActiveInterrupt {
+            kind: "limit".into(),
+            label: "Enough Work".into(),
+            event_id: None,
+        });
         drop(state);
         let _ = app_handle.emit("show-overlay", ());
         return app_handle.state::<AppData>().state.lock().unwrap().clone();
@@ -269,6 +289,7 @@ pub fn create_event(
         recurring_days,
         recurred_today: false,
         trigger_minute,
+        miss_reason: None,
     });
     state.clone()
 }
@@ -336,6 +357,15 @@ pub fn dismiss_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
         ev.triggered = true;
         ev.snoozed_until = None;
+        ev.miss_reason = None;
+    }
+    if state
+        .active_interrupt
+        .as_ref()
+        .and_then(|a| a.event_id)
+        == Some(id)
+    {
+        state.active_interrupt = None;
     }
     state.clone()
 }
@@ -349,6 +379,46 @@ pub fn snooze_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
         ev.triggered = false;
         ev.recurred_today = false; // allow the snoozed re-fire
         ev.snoozed_until = Some(now_ts + 300); // 5 minutes
+        ev.miss_reason = None;
+    }
+    if state
+        .active_interrupt
+        .as_ref()
+        .and_then(|a| a.event_id)
+        == Some(id)
+    {
+        state.active_interrupt = None;
+    }
+    state.clone()
+}
+
+/// Mark an event silently missed (replaced by another interrupt, etc.).
+#[tauri::command(rename = "mark_event_missed")]
+pub fn mark_event_missed_cmd(id: u32, reason: String, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        mark_event_missed(ev, &reason);
+    }
+    if state
+        .active_interrupt
+        .as_ref()
+        .and_then(|a| a.event_id)
+        == Some(id)
+    {
+        state.active_interrupt = None;
+    }
+    state.clone()
+}
+
+/// Clear the next-day welcome card and start tracking for today.
+#[tauri::command]
+pub fn dismiss_day_welcome(app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    state.pending_welcome = None;
+    if state.status == "stopped" {
+        state.status = "active".into();
     }
     state.clone()
 }

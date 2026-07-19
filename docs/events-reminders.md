@@ -45,20 +45,22 @@ Stored on `TimerState` as `events: Vec<ScheduledEvent>` and `next_event_id: u32`
 
 Every second, the loop checks each event. Two paths:
 
+Events fire **only while time is counting** (active or on break, and system not locked/asleep). Otherwise they are silent-missed with `miss_reason`: `before_work` (amber left `+N`) or `inactive` / `replaced` (gray `+N`).
+
 ### One-time events
-- **Due** when `trigger_at <= now` (or `snoozed_until <= now` if snoozed).
+- **Windowed**: due only if `trigger_at <= now < trigger_at + 60s` (same as recurring). Past the window → silent miss.
 - On fire: `triggered = true`, capture `elapsed_at_trigger`, emit `"event-triggered"`.
-- After snooze, only `snoozed_until` can re-fire it — the original `trigger_at` (now in the past) no longer counts, preventing immediate re-triggering.
+- After snooze, only `snoozed_until` can re-fire.
 
 ### Recurring events
 - **Windowed firing**: due only if `trigger_at <= now < trigger_at + 60s`, and only if `!recurred_today`.
-- On fire: set `recurred_today = true` (not `triggered`), capture `elapsed_at_trigger`, emit `"event-triggered"`.
-- **No backfill**: if the laptop was off past the 60s window, the event never fires that day. A reminder set for 1pm that's first seen at 1:30pm stays silent.
+- On fire: set `recurred_today` + `triggered`, capture `elapsed_at_trigger`, emit `"event-triggered"`.
+- **No backfill**: if the laptop was off/locked past the 60s window, silent miss for that day.
 - Snooze: clears `recurred_today` and sets `snoozed_until`; the snoozed re-fire uses the normal snooze path.
 
-The emitted `"event-triggered"` payload is the full `ScheduledEvent`. The frontend branches on `event_type`:
-- `break` → `invoke("start_break", { durationSecs })` (reuses the break countdown overlay)
-- `reminder` → opens `event-notify.html` fullscreen on all monitors, or a mini popup, based on `overlay_type`
+The emitted `"event-triggered"` payload is the full `ScheduledEvent`. The frontend **replaces** any current interrupt, then branches on `event_type`:
+- `break` → `invoke("start_break", …)` (reuses the break countdown overlay)
+- `reminder` → opens `event-notify.html` fullscreen or mini, based on `overlay_type`
 
 ---
 

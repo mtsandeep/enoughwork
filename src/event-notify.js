@@ -1,3 +1,5 @@
+import { listenForDayWelcome } from "./day-welcome-ui.js";
+
 const { emit } = window.__TAURI__.event;
 const { getCurrentWindow } = window.__TAURI__.window;
 
@@ -10,6 +12,8 @@ const scheduledAt = parseInt(params.get("at")) || 0;
 if (mode === "mini") {
   document.body.classList.add("mini");
 }
+
+listenForDayWelcome({ mini: mode === "mini", variant: "event" });
 
 document.getElementById("event-title").textContent = decodeURIComponent(title).replace(/\+/g, " ");
 

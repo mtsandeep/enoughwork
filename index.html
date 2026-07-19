@@ -56,7 +56,10 @@
     </div>
 
     <div class="progress-wrap">
-      <div class="event-overflow event-overflow-left" id="event-overflow-left" hidden></div>
+      <div class="event-overflow-stack event-overflow-stack-left">
+        <div class="event-overflow event-overflow-inactive" id="event-overflow-inactive" hidden title="Missed while system not active"></div>
+        <div class="event-overflow event-overflow-left" id="event-overflow-left" hidden></div>
+      </div>
       <div class="progress-host" id="progress-host">
         <div class="progress-bar" id="progress-bar">
           <svg id="progress-svg" viewBox="0 0 100 6" preserveAspectRatio="none">
@@ -392,6 +395,7 @@
       <button class="debug-btn" id="dbg-1min-snooze">1m Snooze</button>
       <button class="debug-btn" id="dbg-1min-break">1m Break</button>
       <button class="debug-btn" id="dbg-1min-event">1m Reminder</button>
+      <button class="debug-btn" id="dbg-day-welcome">Day Welcome</button>
       <button class="debug-btn debug-btn-danger" id="dbg-clear">Clear State</button>
     </div>
   </div>

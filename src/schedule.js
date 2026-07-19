@@ -354,6 +354,7 @@ $("#btn-events-list").addEventListener("click", openEventsList);
 // Clicking a progress-bar overflow badge (+N) opens Today's Events so the user
 // can see what's beyond the bar.
 $("#event-overflow-left").addEventListener("click", openEventsList);
+$("#event-overflow-inactive").addEventListener("click", openEventsList);
 $("#event-overflow-right").addEventListener("click", openEventsList);
 
 $("#events-back").addEventListener("click", () => {
@@ -425,7 +426,15 @@ export function eventMetaText(ev, now) {
   const isDormantRecurring = ev.triggered
     && !ev.recurred_today
     && (ev.recurring_days || []).length > 0;
-  if (ev.triggered && !isDormantRecurring) return `${formatClockWithDay(ev.trigger_at, now)} · triggered`;
+  if (ev.triggered && !isDormantRecurring) {
+    if (ev.miss_reason === "inactive" || ev.miss_reason === "replaced") {
+      return `${formatClockWithDay(ev.trigger_at, now)} · missed (away)`;
+    }
+    if (ev.miss_reason === "before_work") {
+      return `${formatClockWithDay(ev.trigger_at, now)} · missed (before work)`;
+    }
+    return `${formatClockWithDay(ev.trigger_at, now)} · triggered`;
+  }
   if (ev.snoozed_until) {
     const left = Math.max(0, Math.ceil(ev.snoozed_until - now));
     const m = Math.floor(left / 60);
