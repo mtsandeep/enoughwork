@@ -140,7 +140,8 @@ pub fn run() {
             commands::set_quiet_overlay,
             commands::start_break,
             commands::resume_from_break,
-            commands::extend_break,
+            commands::adjust_break,
+            commands::set_break_duration,
             commands::suggest_break,
             commands::create_event,
             commands::update_event,
@@ -152,6 +153,7 @@ pub fn run() {
             commands::skip_event,
             commands::get_foreground_monitor,
             commands::get_main_work_area,
+            commands::set_snooze_default,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -4,6 +4,15 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Custom snooze durations on all alert surfaces — preset chips, h/m entry, and a time preview, replacing the fixed 30m/5m buttons
+- Snooze remembers your last chosen duration per alert type
+- Break countdown: +5 min quick extend, and editing sets the break's total duration
+
+### Changed
+- Snooze defaults to 10 minutes everywhere
+- Main window stop button reads "Pause/Stop for today" to make clear it can pause the timer
+
 ## [0.2.5] - 2026-07-19
 
 ### Fixed

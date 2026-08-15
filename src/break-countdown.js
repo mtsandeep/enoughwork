@@ -1,4 +1,5 @@
 import { listenForDayWelcome } from "./day-welcome-ui.js";
+import { mountSnoozeControl } from "./snooze-control.js";
 
 const { emit, listen } = window.__TAURI__.event;
 
@@ -13,11 +14,31 @@ document.getElementById("btn-resume").addEventListener("click", async () => {
   await emit("break-action", { action: "resume" });
 });
 
-document.getElementById("btn-extend").addEventListener("click", async () => {
-  if (acted) return;
-  acted = true;
-  emit("break-action", { action: "extend" });
-  setTimeout(() => { acted = false; }, 100);
+let lastRemaining = 0;
+let lastTotal = 0;
+const breakCtl = mountSnoozeControl(document.getElementById("snooze-slot"), {
+  kind: "break-adjust",
+  theme: "dark",
+  btnClass: "break-overlay-btn break-overlay-extend",
+  applyLabel: "Update Break",
+  fixedPrimaryMins: 5,
+  popoverDefaultMins: () => Math.ceil(lastTotal / 60),
+  // The preview anchors on the break start: a staged total N ends at start + N.
+  getEndsAtBase: () => {
+    if (lastTotal <= 0 || lastRemaining <= 0) return 0;
+    const elapsedSecs = lastTotal - lastRemaining;
+    return Math.floor(Date.now() / 1000) - elapsedSecs;
+  },
+  onApply: (m, source) => {
+    if (acted) return;
+    acted = true;
+    // Primary: +5 increment. Popover: set total duration.
+    emit("break-action", {
+      action: source === "apply" ? "set" : "adjust",
+      minutes: m,
+    });
+    setTimeout(() => { acted = false; }, 100);
+  },
 });
 
 // Listen for tick updates from main window
@@ -33,6 +54,8 @@ ringFill.style.strokeDasharray = CIRCUMFERENCE;
 ringFill.style.strokeDashoffset = 0;
 
 function renderTick({ remaining, total, elapsed_secs, ended, over_secs }) {
+  lastRemaining = remaining;
+  lastTotal = total;
   const elapsed = total - remaining;
   const pct = total > 0 ? Math.min(elapsed / total, 1) : 0;
   ringFill.style.strokeDashoffset = CIRCUMFERENCE * pct;

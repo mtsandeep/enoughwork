@@ -26,6 +26,24 @@ pub fn load_settings(store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry
         .unwrap_or_default()
 }
 
+/// Read-modify-write the settings and persist immediately, so a writer that
+/// owns a subset of fields never clobbers the rest.
+pub fn write_settings(
+    app_handle: &tauri::AppHandle,
+    mutate: impl FnOnce(&mut AppSettings),
+) -> AppSettings {
+    let mut settings = match app_handle.store("enoughwork-store.json") {
+        Ok(store) => load_settings(&store),
+        Err(_) => AppSettings::default(),
+    };
+    mutate(&mut settings);
+    if let Ok(store) = app_handle.store("enoughwork-store.json") {
+        let _ = store.set("settings", serde_json::to_value(&settings).unwrap());
+        let _ = store.save();
+    }
+    settings
+}
+
 pub fn get_reset_time(app_handle: &tauri::AppHandle) -> String {
     if let Ok(store) = app_handle.store("enoughwork-store.json") {
         load_settings(&store).reset_time

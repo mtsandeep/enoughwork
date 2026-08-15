@@ -149,13 +149,16 @@ export async function closeBreakOverlay() {
 
 // Listen for break actions from overlay windows
 listen("break-action", async (event) => {
-  const { action } = event.payload;
+  const { action, minutes } = event.payload;
   if (action === "resume") {
     state.current = await invoke("resume_from_break");
     await closeBreakOverlay();
     render();
-  } else if (action === "extend") {
-    state.current = await invoke("extend_break", { addSecs: 300 });
+  } else if (action === "adjust") {
+    state.current = await invoke("adjust_break", { deltaSecs: minutes * 60 });
+    render();
+  } else if (action === "set") {
+    state.current = await invoke("set_break_duration", { totalSecs: minutes * 60 });
     render();
   }
 });
@@ -550,9 +553,9 @@ listen("event-dismiss", async (event) => {
 });
 
 listen("event-snooze", async (event) => {
-  const { id } = event.payload;
+  const { id, minutes } = event.payload;
   showingReminderId = null;
-  state.current = await invoke("snooze_event", { id });
+  state.current = await invoke("snooze_event", { id, minutes: minutes ?? null });
   await closeEventNotify();
   render();
 });

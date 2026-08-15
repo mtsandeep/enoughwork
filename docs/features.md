@@ -131,9 +131,9 @@ When the limit is reached, you can **snooze for 30 minutes** to extend your work
 
 ---
 
-## Stop for Today
+## Pause/Stop for Today
 
-Ends all tracking immediately. The timer stops and status shows "Stopped — resumes tomorrow". A **Resume** button is available if you change your mind. Resuming when over the limit will re-trigger the overlay.
+Ends all tracking immediately. The timer stops and status shows "Stopped — resumes tomorrow". A **Resume Work** button is available if you change your mind. Resuming when over the limit will re-trigger the overlay.
 
 ---
 

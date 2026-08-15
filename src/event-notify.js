@@ -1,4 +1,5 @@
 import { listenForDayWelcome } from "./day-welcome-ui.js";
+import { mountSnoozeControl } from "./snooze-control.js";
 
 const { emit } = window.__TAURI__.event;
 const { getCurrentWindow } = window.__TAURI__.window;
@@ -59,7 +60,7 @@ if (mode === "mini" && params.get("selfpos") === "1") {
 // Drag mini popup
 if (mode === "mini") {
   document.getElementById("event-container").addEventListener("mousedown", (e) => {
-    if (e.target.closest("button")) return;
+    if (e.target.closest("button, .snooze-ctl")) return;
     getCurrentWindow().startDragging();
   });
 }
@@ -71,8 +72,16 @@ document.getElementById("btn-ok").addEventListener("click", async () => {
   await emit("event-dismiss", { id: eventId });
 });
 
-document.getElementById("btn-snooze").addEventListener("click", async () => {
-  if (acted) return;
-  acted = true;
-  await emit("event-snooze", { id: eventId });
+mountSnoozeControl(document.getElementById("snooze-slot"), {
+  category: "event",
+  kind: "snooze",
+  theme: mode === "mini" ? "light" : "dark",
+  btnClass: "event-btn event-btn-snooze",
+  showEdit: mode !== "mini", // no room for the popover in the mini popup
+  getEndsAtBase: mode === "mini" ? null : () => Math.floor(Date.now() / 1000),
+  onApply: async (m) => {
+    if (acted) return;
+    acted = true;
+    await emit("event-snooze", { id: eventId, minutes: m });
+  },
 });

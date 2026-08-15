@@ -1,4 +1,5 @@
 import { listenForDayWelcome } from "./day-welcome-ui.js";
+import { mountSnoozeControl } from "./snooze-control.js";
 
 const { invoke } = window.__TAURI__.core;
 const { emit } = window.__TAURI__.event;
@@ -40,16 +41,23 @@ if (params.get("selfpos") === "1") {
 }
 
 document.querySelector(".notify-container")?.addEventListener("mousedown", (e) => {
-  if (e.target.closest("button")) return;
+  if (e.target.closest("button, .snooze-ctl")) return;
   window.__TAURI__.window.getCurrentWindow().startDragging();
 });
 
 let acted = false;
-document.getElementById("btn-snooze")?.addEventListener("click", async () => {
-  if (acted) return;
-  acted = true;
-  await invoke("snooze", { minutes: 30 });
-  await emit("close-overlay");
+mountSnoozeControl(document.getElementById("snooze-slot"), {
+  category: "limit",
+  kind: "snooze",
+  theme: "light",
+  btnClass: "notify-btn notify-btn-snooze",
+  showEdit: false, // no room for the popover in the mini popup
+  onApply: async (m) => {
+    if (acted) return;
+    acted = true;
+    await invoke("snooze", { minutes: m });
+    await emit("close-overlay");
+  },
 });
 document.getElementById("btn-stop")?.addEventListener("click", async () => {
   if (acted) return;

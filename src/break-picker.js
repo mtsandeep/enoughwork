@@ -33,7 +33,7 @@ function updateBreakDurationDisplay() {
 }
 
 function highlightQuickPick() {
-  document.querySelectorAll(".break-quick-btn").forEach(btn => {
+  document.querySelectorAll("#break-picker-page .break-quick-btn").forEach(btn => {
     btn.classList.toggle("active", parseInt(btn.dataset.min) === breakDurationMin);
   });
 }
@@ -77,8 +77,8 @@ $("#break-duration-row").addEventListener("click", () => {
   if (!breakDurationEditing) openBreakDurationEdit();
 });
 
-// Quick pick buttons
-document.querySelectorAll(".break-quick-btn").forEach(btn => {
+// Quick pick buttons (scoped — the event editor has its own row)
+document.querySelectorAll("#break-picker-page .break-quick-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     breakDurationMin = parseInt(btn.dataset.min);
     updateBreakDurationDisplay();

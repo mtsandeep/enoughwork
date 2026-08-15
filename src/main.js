@@ -13,8 +13,22 @@ import {
   demoDayWelcome,
 } from "./overlays.js";
 import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate } from "./settings.js";
+import { mountSnoozeControl } from "./snooze-control.js";
 import "./break-picker.js";
 import "./schedule.js";
+
+// Snooze control (owns its own label from the sticky defaults)
+const snoozeCtl = mountSnoozeControl($("#snooze-slot"), {
+  category: "limit",
+  kind: "snooze",
+  theme: "light",
+  btnClass: "btn btn-snooze",
+  getEndsAtBase: () => Math.floor(Date.now() / 1000),
+  onApply: async (m) => {
+    state.current = await invoke("snooze", { minutes: m });
+    render();
+  },
+});
 
 let prevBreakStatus = false;
 
@@ -129,7 +143,7 @@ function render() {
 
   // Show snooze button when at/past limit or limit_reached or snoozed
   const pastLimit = elapsed_secs >= limit_secs;
-  $("#btn-snooze").hidden = !pastLimit && status !== "limit_reached" && status !== "snoozed";
+  snoozeCtl.setHidden(!pastLimit && status !== "limit_reached" && status !== "snoozed");
 
   // Show/hide stop and resume based on status
   $("#btn-stop").hidden = status === "stopped";
@@ -147,7 +161,7 @@ function render() {
   // Stop/snooze hidden during break
   if (status === "on_break") {
     $("#btn-stop").hidden = true;
-    $("#btn-snooze").hidden = true;
+    snoozeCtl.setHidden(true);
     $("#btn-resume").hidden = true;
   }
 
@@ -174,12 +188,9 @@ function render() {
     $("#snooze-progress").style.width = pct2 + "%";
 
     // Show snooze button during snooze to extend
-    $("#btn-snooze").hidden = false;
-    const totalSnoozeMins = Math.round(total / 60);
-    $("#btn-snooze").textContent = "Snooze 30m";
+    snoozeCtl.setHidden(false);
   } else {
     snoozeBar.hidden = true;
-    $("#btn-snooze").textContent = "Snooze 30m";
   }
 
   // Status
@@ -335,11 +346,6 @@ limitInputM.addEventListener("keydown", (e) => {
 });
 
 // Action buttons
-$("#btn-snooze").addEventListener("click", async () => {
-  state.current = await invoke("snooze", { minutes: 30 });
-  render();
-});
-
 $("#btn-stop").addEventListener("click", async () => {
   state.current = await invoke("stop_for_today");
   render();
@@ -398,9 +404,9 @@ $("#dbg-1min").addEventListener("click", async () => {
   await refreshState();
 });
 
-// Debug: 1 min snooze
+// Debug: 1 min snooze (remember:false — don't poison the sticky default)
 $("#dbg-1min-snooze").addEventListener("click", async () => {
-  state.current = await invoke("snooze", { minutes: 1 });
+  state.current = await invoke("snooze", { minutes: 1, remember: false });
   render();
 });
 

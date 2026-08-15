@@ -1,0 +1,254 @@
+/* Shared snooze/adjust control — self-contained (notify/event-notify don't
+   load styles.css). Dark tokens by default, .light override. */
+
+.snooze-ctl {
+  --sc-panel: #1a1a2e;
+  --sc-panel-alt: #232338;
+  --sc-text: #fff;
+  --sc-muted: #a0a0b8;
+  --sc-border: #3a3a4e;
+  --sc-accent: #fde047;
+  --sc-accent-text: #1f2937;
+}
+
+.snooze-ctl.light {
+  --sc-panel: #ffffff;
+  --sc-panel-alt: #f6f7fb;
+  --sc-text: #111;
+  --sc-muted: #666;
+  --sc-border: #e5e7eb;
+  --sc-accent: #4f46e5;
+  --sc-accent-text: #fff;
+}
+
+.snooze-root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Modal backdrop — also carries the .snooze-ctl theme class because the
+   popover lives on document.body, outside the token-defining element. */
+.snooze-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Flex rules above override the UA's [hidden] { display: none } — restore it. */
+.snooze-root[hidden],
+.snooze-row[hidden],
+.snooze-pop[hidden],
+.snooze-backdrop[hidden] {
+  display: none !important;
+}
+
+.snooze-ctl.light {
+  --sc-panel: #ffffff;
+  --sc-panel-alt: #f6f7fb;
+  --sc-text: #111;
+  --sc-muted: #666;
+  --sc-border: #e5e7eb;
+  --sc-accent: #4f46e5;
+  --sc-accent-text: #fff;
+}
+
+.snooze-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ✎ custom button — plain icon, no outline */
+.snooze-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--sc-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.snooze-edit:hover {
+  color: var(--sc-accent);
+}
+
+/* ---- popover ---- */
+
+.snooze-pop {
+  width: min(320px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--sc-panel);
+  border: 1px solid var(--sc-border);
+  color: var(--sc-text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+/* chips */
+.snooze-chips {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snooze-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--sc-border);
+  background: transparent;
+  color: var(--sc-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.snooze-chip:hover {
+  border-color: var(--sc-accent);
+}
+
+.snooze-chip.active {
+  background: var(--sc-accent);
+  border-color: var(--sc-accent);
+  color: var(--sc-accent-text);
+  border-style: solid;
+}
+
+/* staged value: tappable display that morphs into h/m inputs on click.
+   All rows are 42px tall so the morph causes no layout shift. */
+.snooze-selected-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+}
+
+.snooze-selected {
+  height: 42px;
+  min-width: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  border: 2px dotted var(--sc-border);
+  background: transparent;
+  color: var(--sc-text);
+  cursor: pointer;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-family: inherit;
+}
+
+.snooze-selected:hover {
+  border-color: var(--sc-accent);
+}
+
+.snooze-selected-row.editing .snooze-selected {
+  display: none;
+}
+
+.snooze-custom-row[hidden] {
+  display: none !important;
+}
+
+.snooze-ends-at {
+  font-size: 12px;
+  color: var(--sc-muted);
+  min-height: 15px;
+}
+
+/* custom h/m inputs */
+.snooze-custom-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.snooze-custom-row input {
+  width: 60px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--sc-border);
+  background: var(--sc-panel-alt);
+  color: var(--sc-text);
+  font-size: 20px;
+  text-align: center;
+  font-family: inherit;
+}
+
+.snooze-custom-row input:focus {
+  outline: none;
+  border-color: var(--sc-accent);
+}
+
+.snooze-custom-unit {
+  font-size: 14px;
+  color: var(--sc-muted);
+}
+
+.snooze-custom-tick {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: var(--sc-accent);
+  color: var(--sc-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* apply — commits the staged value */
+.snooze-apply {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: var(--sc-accent);
+  color: var(--sc-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.snooze-apply:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.snooze-reset {
+  border: none;
+  background: transparent;
+  color: var(--sc-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.snooze-reset:hover {
+  color: var(--sc-text);
+}

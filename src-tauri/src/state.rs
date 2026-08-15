@@ -174,6 +174,9 @@ pub fn finalize_break(state: &mut TimerState, now_ts: i64) {
 
 fn break_counted_secs(state: &TimerState, now_ts: i64) -> u64 {
     match (state.break_until, state.break_duration_secs) {
+        // Until in the past (set_break_duration below elapsed): the full
+        // shrunken total counts as taken.
+        (Some(until), dur) if dur > 0 && until <= now_ts => dur,
         (Some(until), dur) if dur > 0 => {
             let remaining = (until - now_ts).max(0) as u64;
             dur.saturating_sub(remaining).min(dur)
@@ -191,6 +194,11 @@ pub struct BreakSuggestion {
     pub work_min: u32,
 }
 
+/// Factory default for the sticky snooze durations (minutes).
+pub fn default_sticky_mins() -> u64 {
+    10
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub overlay_title: String,
@@ -199,6 +207,12 @@ pub struct AppSettings {
     pub force_fullscreen_overlay: bool,
     pub animation_type: String,
     pub auto_update: bool,
+    /// Sticky "last used" snooze durations (minutes), written through by the
+    /// snooze commands. `#[serde(default)]` keeps old settings files loading.
+    #[serde(default = "default_sticky_mins")]
+    pub snooze_limit_mins: u64,
+    #[serde(default = "default_sticky_mins")]
+    pub snooze_event_mins: u64,
 }
 
 impl Default for AppSettings {
@@ -210,6 +224,8 @@ impl Default for AppSettings {
             force_fullscreen_overlay: false,
             animation_type: "star-drop".into(),
             auto_update: true,
+            snooze_limit_mins: default_sticky_mins(),
+            snooze_event_mins: default_sticky_mins(),
         }
     }
 }

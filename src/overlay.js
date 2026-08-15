@@ -1,4 +1,5 @@
 import { listenForDayWelcome } from "./day-welcome-ui.js";
+import { mountSnoozeControl } from "./snooze-control.js";
 
 const { invoke } = window.__TAURI__.core;
 const { emit } = window.__TAURI__.event;
@@ -15,11 +16,18 @@ invoke("get_settings").then(settings => {
 
 let acted = false;
 
-document.getElementById("btn-snooze")?.addEventListener("click", async () => {
-  if (acted) return;
-  acted = true;
-  await invoke("snooze", { minutes: 30 });
-  await emit("close-overlay");
+mountSnoozeControl(document.getElementById("snooze-slot"), {
+  category: "limit",
+  kind: "snooze",
+  theme: "dark",
+  btnClass: "overlay-btn overlay-btn-snooze",
+  getEndsAtBase: () => Math.floor(Date.now() / 1000),
+  onApply: async (m) => {
+    if (acted) return;
+    acted = true;
+    await invoke("snooze", { minutes: m });
+    await emit("close-overlay");
+  },
 });
 
 document.getElementById("btn-stop")?.addEventListener("click", async () => {

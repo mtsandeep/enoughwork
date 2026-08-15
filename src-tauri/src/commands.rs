@@ -68,22 +68,32 @@ pub fn set_limit(minutes: u64, app_handle: tauri::AppHandle) -> TimerState {
 }
 
 #[tauri::command]
-pub fn snooze(minutes: u64, app_handle: tauri::AppHandle) -> TimerState {
+pub fn snooze(minutes: u64, remember: Option<bool>, app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
-    let mut state = app_data.state.lock().unwrap();
-    let now_ts = chrono::Local::now().timestamp();
-    let extra_secs = minutes as i64 * 60;
+    {
+        let mut state = app_data.state.lock().unwrap();
+        let now_ts = chrono::Local::now().timestamp();
+        let extra_secs = minutes as i64 * 60;
 
-    // If already snoozed, extend; otherwise start fresh
-    let current_until = state.snooze_until.unwrap_or(now_ts);
-    state.snooze_until = Some(std::cmp::max(current_until, now_ts) + extra_secs);
-    state.total_snooze_secs += minutes * 60;
+        // If already snoozed, extend; otherwise start fresh
+        let current_until = state.snooze_until.unwrap_or(now_ts);
+        state.snooze_until = Some(std::cmp::max(current_until, now_ts) + extra_secs);
+        state.total_snooze_secs += minutes * 60;
 
-    if state.snooze_started_at.is_none() {
-        state.snooze_started_at = Some(now_ts);
+        if state.snooze_started_at.is_none() {
+            state.snooze_started_at = Some(now_ts);
+        }
+        state.status = "snoozed".into();
     }
-    state.status = "snoozed".into();
-    state.clone()
+    // Sticky default + label sync — outside the state lock (store I/O).
+    if remember.unwrap_or(true) {
+        let settings = crate::persistence::write_settings(&app_handle, |s| {
+            s.snooze_limit_mins = minutes.clamp(1, 240);
+        });
+        let _ = app_handle.emit("snooze-defaults-changed", &settings);
+    }
+    let result = app_data.state.lock().unwrap().clone();
+    result
 }
 
 #[tauri::command]
@@ -192,15 +202,52 @@ pub fn resume_from_break(app_handle: tauri::AppHandle) -> TimerState {
     state.clone()
 }
 
+/// Extend or shorten the running break by `delta_secs`. `break_until` and
+/// `break_duration_secs` move by the same signed delta so counted time stays
+/// continuous. Shortening clamps to one minute remaining and is a no-op once
+/// the break has ended.
 #[tauri::command]
-pub fn extend_break(add_secs: u64, app_handle: tauri::AppHandle) -> TimerState {
+pub fn adjust_break(delta_secs: i64, app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
     let now_ts = chrono::Local::now().timestamp();
     if state.status == "on_break" {
         let current = state.break_until.unwrap_or(now_ts);
-        state.break_until = Some(std::cmp::max(current, now_ts) + add_secs as i64);
-        state.break_duration_secs += add_secs;
+        let new_until = if delta_secs >= 0 {
+            std::cmp::max(current, now_ts) + delta_secs
+        } else if current <= now_ts {
+            current // already ended — nothing to shorten
+        } else {
+            std::cmp::max(current + delta_secs, now_ts + 60)
+        };
+        let applied = new_until - current;
+        state.break_until = Some(new_until);
+        state.break_duration_secs = (state.break_duration_secs as i64 + applied).max(1) as u64;
+    }
+    state.clone()
+}
+
+/// Set the running break's total duration. The new end is
+/// `started_at + total`, so a total below the already-elapsed time leaves
+/// `break_until` in the past by the overshoot — the overlay then shows the
+/// total as taken plus recharging overtime.
+#[tauri::command]
+pub fn set_break_duration(total_secs: u64, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if state.status == "on_break" {
+        let total_secs = total_secs.max(60); // at least a minute
+        // Re-derive elapsed from the anchors so lock/sleep freezes don't skew it.
+        let current_until = state.break_until.unwrap_or(now_ts);
+        let remaining = (current_until - now_ts).max(0) as u64;
+        let elapsed = state.break_duration_secs.saturating_sub(remaining);
+        let started = state
+            .break_started_at
+            .unwrap_or(now_ts - elapsed as i64)
+            .min(now_ts - elapsed as i64);
+        state.break_duration_secs = total_secs;
+        state.break_until = Some(started + total_secs as i64);
     }
     state.clone()
 }
@@ -371,25 +418,47 @@ pub fn dismiss_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
 }
 
 #[tauri::command]
-pub fn snooze_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+pub fn snooze_event(
+    id: u32,
+    minutes: Option<u64>,
+    remember: Option<bool>,
+    app_handle: tauri::AppHandle,
+) -> TimerState {
+    let mins = minutes
+        .unwrap_or_else(|| match app_handle.store("enoughwork-store.json") {
+            Ok(store) => load_settings(&store).snooze_event_mins,
+            Err(_) => crate::state::default_sticky_mins(),
+        })
+        .clamp(1, 240);
+
     let app_data = app_handle.state::<AppData>();
-    let mut state = app_data.state.lock().unwrap();
-    let now_ts = chrono::Local::now().timestamp();
-    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
-        ev.triggered = false;
-        ev.recurred_today = false; // allow the snoozed re-fire
-        ev.snoozed_until = Some(now_ts + 300); // 5 minutes
-        ev.miss_reason = None;
-    }
-    if state
-        .active_interrupt
-        .as_ref()
-        .and_then(|a| a.event_id)
-        == Some(id)
     {
-        state.active_interrupt = None;
+        let mut state = app_data.state.lock().unwrap();
+        let now_ts = chrono::Local::now().timestamp();
+        if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+            ev.triggered = false;
+            ev.recurred_today = false; // allow the snoozed re-fire
+            ev.snoozed_until = Some(now_ts + mins as i64 * 60);
+            ev.miss_reason = None;
+        }
+        if state
+            .active_interrupt
+            .as_ref()
+            .and_then(|a| a.event_id)
+            == Some(id)
+        {
+            state.active_interrupt = None;
+        }
     }
-    state.clone()
+    // Sticky default + label sync — outside the state lock (store I/O).
+    if remember.unwrap_or(true) {
+        let settings = crate::persistence::write_settings(&app_handle, |s| {
+            s.snooze_event_mins = mins;
+        });
+        let _ = app_handle.emit("snooze-defaults-changed", &settings);
+    }
+    let result = app_data.state.lock().unwrap().clone();
+    result
 }
 
 /// Mark an event silently missed (replaced by another interrupt, etc.).
@@ -448,6 +517,8 @@ pub fn get_settings(app_handle: tauri::AppHandle) -> crate::state::AppSettings {
     load_settings(&store)
 }
 
+/// Read-modify-write: overwrites only the settings page's fields so the
+/// sticky snooze defaults survive every save from the UI.
 #[tauri::command]
 pub fn save_settings(
     overlay_title: String,
@@ -458,19 +529,30 @@ pub fn save_settings(
     auto_update: bool,
     app_handle: tauri::AppHandle,
 ) -> crate::state::AppSettings {
-    let settings = crate::state::AppSettings {
-        overlay_title,
-        overlay_subtitle,
-        reset_time,
-        force_fullscreen_overlay,
-        animation_type,
-        auto_update,
-    };
-    let store = app_handle.store("enoughwork-store.json");
-    if let Ok(store) = store {
-        let _ = store.set("settings", serde_json::to_value(&settings).unwrap());
-        let _ = store.save();
-    }
+    crate::persistence::write_settings(&app_handle, |s| {
+        s.overlay_title = overlay_title;
+        s.overlay_subtitle = overlay_subtitle;
+        s.reset_time = reset_time;
+        s.force_fullscreen_overlay = force_fullscreen_overlay;
+        s.animation_type = animation_type;
+        s.auto_update = auto_update;
+    })
+}
+
+/// Set a sticky snooze/adjust default directly (popover "Reset to default").
+#[tauri::command]
+pub fn set_snooze_default(
+    category: String,
+    minutes: u64,
+    app_handle: tauri::AppHandle,
+) -> crate::state::AppSettings {
+    let minutes = minutes.clamp(1, 240);
+    let settings = crate::persistence::write_settings(&app_handle, |s| match category.as_str() {
+        "limit" => s.snooze_limit_mins = minutes,
+        "event" => s.snooze_event_mins = minutes,
+        _ => {}
+    });
+    let _ = app_handle.emit("snooze-defaults-changed", &settings);
     settings
 }
 
