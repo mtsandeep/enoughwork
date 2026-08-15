@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-08-15
+
 ### Added
 - Custom snooze durations on all alert surfaces — preset chips, h/m entry, and a time preview, replacing the fixed 30m/5m buttons
 - Snooze remembers your last chosen duration per alert type
