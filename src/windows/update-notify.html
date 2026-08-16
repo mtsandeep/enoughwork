@@ -31,6 +31,22 @@
     .notify-container button {
       cursor: pointer;
     }
+    .notify-app {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      align-self: flex-start;
+    }
+    .notify-app img {
+      width: 24px;
+      height: 24px;
+      display: block;
+    }
+    .notify-app span {
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+    }
     .notify-title {
       font-size: 18px;
       font-weight: 700;
@@ -82,6 +98,10 @@
 </head>
 <body>
   <div class="notify-container">
+    <div class="notify-app">
+      <img src="../assets/app-icon.png" alt="EnoughWork" />
+      <span>EnoughWork</span>
+    </div>
     <div class="notify-title">Update Available</div>
     <div class="notify-subtitle" id="update-version"></div>
     <div class="notify-buttons">
@@ -94,9 +114,11 @@
     const { emit } = window.__TAURI__.event;
     const win = window.__TAURI__.window.getCurrentWindow();
 
-    // Show version from URL param
+    // Show version from URL param. demo=1 (debug preview): buttons are
+    // visual-only — no dismiss memory is written, no real download starts.
     const params = new URLSearchParams(window.location.search);
     const version = params.get("v") || "";
+    const demo = params.get("demo") === "1";
     document.getElementById("update-version").textContent =
       version ? `v${version} is ready to download` : "A new version is ready";
 
@@ -134,7 +156,7 @@
 
     // Dismiss
     document.getElementById("btn-later").addEventListener("click", async () => {
-      await emit("update-dismiss");
+      if (!demo) await emit("update-dismiss");
       await win.close();
     });
 
@@ -146,6 +168,15 @@
       const btn = document.getElementById("btn-download");
       btn.textContent = "Downloading...";
       btn.classList.add("downloading");
+      if (demo) {
+        // Preview: simulate the state briefly, then reset — nothing real runs.
+        setTimeout(() => {
+          downloading = false;
+          btn.textContent = "Download & Restart";
+          btn.classList.remove("downloading");
+        }, 1500);
+        return;
+      }
       await emit("update-download");
       // Don't close — main.js will relaunch the app on success
     });

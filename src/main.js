@@ -12,7 +12,7 @@ import {
   presentDayWelcomeIfOverlayOpen,
   demoDayWelcome,
 } from "./overlays.js";
-import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate } from "./settings.js";
+import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate, openUpdateNotifyPopup } from "./settings.js";
 import { mountSnoozeControl } from "./snooze-control.js";
 import "./break-picker.js";
 import "./schedule.js";
@@ -442,6 +442,9 @@ $("#dbg-1min-break").addEventListener("click", async () => {
 $("#dbg-day-welcome")?.addEventListener("click", async () => {
   await demoDayWelcome("Stand up stretch");
 });
+
+// Debug: preview the update-available popup (demo mode — buttons are visual-only)
+$("#dbg-update-notify")?.addEventListener("click", () => openUpdateNotifyPopup("0.2.7", true));
 
 // Debug: 1 min reminder (fullscreen)
 $("#dbg-1min-event").addEventListener("click", async () => {

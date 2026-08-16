@@ -147,11 +147,19 @@ async function setDismissedUpdateVersion(version) {
 }
 
 // Open the small "Update Available" popup (mirrors openNotifyPopup's positioning).
-async function openUpdateNotifyPopup(version) {
-  if (updateNotifyWindow) return; // already open
+// Exported for the debug bar preview; `demo` isolates the buttons from real
+// updater state (no dismiss memory, no actual download).
+export async function openUpdateNotifyPopup(version, demo = false) {
+  if (updateNotifyWindow) {
+    // Real updates keep the open popup; preview clicks always re-open fresh
+    // so you never interact with a stale window from an older build.
+    if (!demo) return;
+    try { await updateNotifyWindow.close(); } catch {}
+    updateNotifyWindow = null;
+  }
 
   const popupW = 300;
-  const popupH = 160;
+  const popupH = 200;
   const margin = 16;
 
   let posX = 100, posY = 100;
@@ -166,10 +174,11 @@ async function openUpdateNotifyPopup(version) {
     }
   } catch (_) {}
 
+  const demoQ = demo ? "&demo=1" : "";
   updateNotifyWindow = new WebviewWindow("update-notify-0", {
     url: hasWorkArea
-      ? `src/windows/update-notify.html?v=${encodeURIComponent(version)}`
-      : `src/windows/update-notify.html?v=${encodeURIComponent(version)}&selfpos=1`,
+      ? `src/windows/update-notify.html?v=${encodeURIComponent(version)}${demoQ}`
+      : `src/windows/update-notify.html?v=${encodeURIComponent(version)}&selfpos=1${demoQ}`,
     width: popupW,
     height: popupH,
     x: posX,

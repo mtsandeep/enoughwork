@@ -4,6 +4,9 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Update popup now shows the EnoughWork app icon and name above the message, so it's clear the alert comes from the app
+
 ### Fixed
 - Reminders now fire whenever the laptop is on and unlocked — including after the limit is hit or the timer is paused/stopped for the day (breaks still fire only while work time is counting)
 - Snoozed reminders stay pending across lock/sleep and fire when you return, instead of being silently missed
