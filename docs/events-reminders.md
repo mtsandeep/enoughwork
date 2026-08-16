@@ -45,7 +45,7 @@ Stored on `TimerState` as `events: Vec<ScheduledEvent>` and `next_event_id: u32`
 
 Every second, the loop checks each event. Two paths:
 
-Events fire **only while time is counting** (active or on break, and system not locked/asleep). Otherwise they are silent-missed with `miss_reason`: `before_work` (amber left `+N`) or `inactive` / `replaced` (gray `+N`).
+**Reminders** fire whenever the session is usable (not locked/asleep) — even if tracking is stopped, paused (limit snooze), or past the limit. **Breaks** fire only while work time is counting (active or on break, system usable). Otherwise they are silent-missed with `miss_reason`: `before_work` (amber left `+N`) or `inactive` / `replaced` (gray `+N`).
 
 ### One-time events
 - **Windowed**: due only if `trigger_at <= now < trigger_at + 60s` (same as recurring). Past the window → silent miss.
@@ -56,7 +56,7 @@ Events fire **only while time is counting** (active or on break, and system not 
 - **Windowed firing**: due only if `trigger_at <= now < trigger_at + 60s`, and only if `!recurred_today`.
 - On fire: set `recurred_today` + `triggered`, capture `elapsed_at_trigger`, emit `"event-triggered"`.
 - **No backfill**: if the laptop was off/locked past the 60s window, silent miss for that day.
-- Snooze: clears `recurred_today` and sets `snoozed_until`; the snoozed re-fire uses the normal snooze path.
+- Snooze: clears `recurred_today` and sets `snoozed_until`; the snoozed re-fire uses the normal snooze path. A snoozed reminder whose time arrives while the machine is locked/asleep stays pending and fires when the user returns (the `get_state` poll never marks snoozed events missed).
 
 The emitted `"event-triggered"` payload is the full `ScheduledEvent`. The frontend **replaces** any current interrupt, then branches on `event_type`:
 - `break` → `invoke("start_break", …)` (reuses the break countdown overlay)

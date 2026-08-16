@@ -277,11 +277,13 @@ pub const RECUR_WINDOW_SECS: i64 = 60;
 /// passed (e.g. the laptop was off past trigger_at + window), mark it done
 /// for the day so the UI shows "triggered" instead of "due now".
 ///
-/// Idempotent. Two cases per event, both gated on the fire window having
-/// passed (trigger_at + window <= now):
+/// Idempotent. Cases per event, gated on the fire window having passed
+/// (trigger_at + window <= now):
 ///  - armed for today (triggered=false): mark done. This also rescues events
 ///    stuck in the half-marked state from older builds (recurred_today=true
 ///    but triggered=false), which kept showing "due now" in the UI.
+///  - snooze pending (snoozed_until set): leave alone — the tick loop owns
+///    the re-fire; marking it missed here would cancel the snooze.
 ///  - dormant (triggered=true, recurred_today=false): leave alone — that's a
 ///    non-scheduled weekday or a not-yet-rearmed rollover state, not "missed".
 pub fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64, elapsed_secs: u64) {
@@ -297,6 +299,11 @@ pub fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64,
         }
         // Already fully done for today: nothing to do.
         if ev.triggered && ev.recurred_today {
+            continue;
+        }
+        // Snooze pending: the tick loop fires (or misses) it — never cancel
+        // a user-requested snooze from a poll.
+        if ev.snoozed_until.is_some() {
             continue;
         }
         if now_ts >= ev.trigger_at + RECUR_WINDOW_SECS {

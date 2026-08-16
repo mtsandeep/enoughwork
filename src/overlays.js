@@ -520,7 +520,8 @@ async function closeEventNotify() {
   showingReminderId = null;
 }
 
-// Rust emits this when an event's time arrives (only while time is running)
+// Rust emits this when an event's time arrives (reminders: session usable —
+// fires even if the timer is stopped; breaks: only while time is counting)
 listen("event-triggered", async (event) => {
   const ev = event.payload;
   await prepareInterruptReplace();

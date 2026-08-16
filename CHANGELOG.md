@@ -4,6 +4,12 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Reminders now fire whenever the laptop is on and unlocked — including after the limit is hit or the timer is paused/stopped for the day (breaks still fire only while work time is counting)
+- Snoozed reminders stay pending across lock/sleep and fire when you return, instead of being silently missed
+- Snoozing a recurring reminder is no longer cancelled by the UI poll about a minute later; the snoozed re-fire now actually happens
+- The limit overlay returns when a limit snooze expires while you're using the laptop; if it expires while locked, the overlay is held and shown on unlock instead of never/while locked
+
 ## [0.2.6] - 2026-08-15
 
 ### Added
