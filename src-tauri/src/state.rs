@@ -28,7 +28,8 @@ pub struct ScheduledEvent {
     pub recurred_today: bool,          // recurring: already fired this calendar day
     #[serde(default)]
     pub trigger_minute: Option<u32>,   // recurring: minute-of-day (HH*60+MM) to recompute trigger_at daily
-    /// Why a silent miss happened: "before_work" | "inactive" | "replaced"
+    /// Why a silent miss happened: "before_work" | "inactive" | "replaced" |
+    /// "skipped" (user skipped today's occurrence)
     #[serde(default)]
     pub miss_reason: Option<String>,
 }

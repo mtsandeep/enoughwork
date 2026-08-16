@@ -427,6 +427,9 @@ export function eventMetaText(ev, now) {
     && !ev.recurred_today
     && (ev.recurring_days || []).length > 0;
   if (ev.triggered && !isDormantRecurring) {
+    if (ev.miss_reason === "skipped") {
+      return `${formatClockWithDay(ev.trigger_at, now)} · skipped for today`;
+    }
     if (ev.miss_reason === "inactive" || ev.miss_reason === "replaced") {
       return `${formatClockWithDay(ev.trigger_at, now)} · missed (away)`;
     }

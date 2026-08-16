@@ -494,9 +494,11 @@ pub fn dismiss_day_welcome(app_handle: tauri::AppHandle) -> TimerState {
 
 /// Skip today's occurrence of a recurring event without affecting future days.
 /// Marks the event as fully done for today (triggered + recurred_today), which
-/// the tick loop treats as "don't fire". The next daily rollover resets
-/// recurred_today and re-arms it for the next scheduled weekday.
-/// Only meaningful for recurring events armed to fire today (triggered=false).
+/// the tick loop treats as "don't fire", with miss_reason "skipped" so the UI
+/// can show "skipped for today" instead of "triggered". The next daily
+/// rollover resets recurred_today and re-arms it for the next scheduled
+/// weekday. Only meaningful for recurring events armed to fire today
+/// (triggered=false).
 #[tauri::command]
 pub fn skip_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
@@ -505,6 +507,7 @@ pub fn skip_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
         ev.triggered = true;
         ev.recurred_today = true;
         ev.snoozed_until = None;
+        ev.miss_reason = Some("skipped".into());
     }
     state.clone()
 }

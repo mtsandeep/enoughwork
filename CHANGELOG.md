@@ -10,6 +10,9 @@ All notable changes to EnoughWork will be documented in this file.
 - Snoozing a recurring reminder is no longer cancelled by the UI poll about a minute later; the snoozed re-fire now actually happens
 - The limit overlay returns when a limit snooze expires while you're using the laptop; if it expires while locked, the overlay is held and shown on unlock instead of never/while locked
 
+### Changed
+- Skipped recurring events now show "skipped for today" in the events list and drop off the progress bar for the day, instead of appearing as "triggered" with an amber `+N` missed badge
+
 ## [0.2.6] - 2026-08-15
 
 ### Added

@@ -66,6 +66,9 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
     // recurring event (e.g. Mon/Wed on a Tuesday) or any future-dated event
     // is excluded from both dots and the +N overflow badge.
     if (!firesToday(ev)) continue;
+    // Skipped for today: user cancelled this occurrence — leave it off the
+    // bar and out of the +N badges entirely (not a miss).
+    if (ev.miss_reason === "skipped") continue;
 
     let x; // percentage position on bar (elapsed / limit)
     const triggered = ev.triggered;
