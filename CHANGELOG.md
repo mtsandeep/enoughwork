@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-08-16
+
 ### Added
 - Update popup now shows the EnoughWork app icon and name above the message, so it's clear the alert comes from the app
 
