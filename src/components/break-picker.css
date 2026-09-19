@@ -53,7 +53,7 @@
 .break-duration-row {
   font-size: 40px;
   font-weight: 700;
-  color: #0d9488;
+  color: var(--teal);
   cursor: pointer;
   padding: 8px 24px;
   border-radius: var(--radius);
@@ -66,7 +66,7 @@
 }
 
 .break-duration-row:hover {
-  background: #f0fdfa;
+  background: var(--teal-bg);
 }
 
 .break-duration-row.editing {
@@ -104,12 +104,12 @@
   width: 64px;
   font-size: 32px;
   font-weight: 700;
-  color: #0d9488;
+  color: var(--teal);
   height: 40px;
 }
 
 .break-duration-input:focus {
-  border-color: #0d9488;
+  border-color: var(--teal);
 }
 
 .break-quick-picks {
@@ -122,7 +122,7 @@
 .break-quick-btn {
   padding: 8px 16px;
   border-radius: 20px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   background: var(--bg);
   font-size: 14px;
   font-weight: 500;
@@ -132,20 +132,20 @@
 }
 
 .break-quick-btn:hover {
-  border-color: #0d9488;
-  background: #f0fdfa;
+  border-color: var(--teal);
+  background: var(--teal-bg);
 }
 
 .break-quick-btn.active {
-  background: #0d9488;
+  background: var(--teal-solid);
   color: white;
-  border-color: #0d9488;
+  border-color: var(--teal-solid);
 }
 
 .btn-start-break {
-  background: #0d9488;
+  background: var(--teal-solid);
   color: white;
-  border-color: #0d9488;
+  border-color: var(--teal-solid);
   padding: 12px 40px;
   font-size: 16px;
   font-weight: 600;
@@ -156,6 +156,6 @@
 }
 
 .btn-start-break:hover {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: var(--teal-solid-hover);
+  border-color: var(--teal-solid-hover);
 }

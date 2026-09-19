@@ -75,6 +75,51 @@
   display: none !important;
 }
 
+/* Megaphone artwork fills: q-front = cone, q-body = body, q-line = outline. */
+.quiet-icon .q-front {
+  fill: #ff7474;
+}
+
+.quiet-icon .q-body {
+  fill: #ecf4f7;
+}
+
+.quiet-icon .q-line {
+  fill: #51565f;
+}
+
+/* Off state grays the cone */
+#quiet-icon-off .q-front {
+  fill: #c8c8c8;
+}
+
+:root[data-theme="dark"] .quiet-icon .q-front {
+  fill: #999999;
+}
+
+:root[data-theme="dark"] .quiet-icon .q-body {
+  fill: #3d3d3d;
+}
+
+:root[data-theme="dark"] .quiet-icon .q-line {
+  fill: #d9d9d9;
+}
+
+:root[data-theme="dark"] #quiet-icon-off .q-front {
+  fill: #7a7a7a;
+}
+
+:root[data-theme="dark"] #quiet-icon-off .q-line {
+  fill: #9a9a9a;
+}
+
+/* ===== Theme Toggle (top-left corner, before the DEV/update badges) —
+   light / dark. top optically centers against the badge pills. ===== */
+.theme-toggle {
+  left: 16px;
+  top: 10px;
+}
+
 /* ===== Events List Icon (next to megaphone) ===== */
 .events-list-icon {
   right: 88px;
@@ -89,7 +134,7 @@
   height: 40px;
   padding: 0;
   border-radius: var(--radius);
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--border-strong);
   background: transparent;
   color: var(--muted);
   cursor: pointer;

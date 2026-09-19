@@ -73,7 +73,7 @@ function ensureSyncListener() {
  * opts:
  *   category: "limit" | "event"       (sticky-default categories; break isn't one)
  *   kind: "snooze" | "break-adjust"   (break-adjust = set-total popover + fixed "+N" primary)
- *   theme: "dark" | "light"
+ *   theme: "dark" | "light" | "auto"   ("auto" follows the app theme — main window)
  *   btnClass: surface button classes for the primary button
  *   applyLabel: popover apply button text (default "Snooze" / "Update Break")
  *   labelFormat: (m) => string       (default "Snooze 10m" / "+N min")
@@ -115,8 +115,18 @@ export function mountSnoozeControl(container, opts) {
 
   // ---- markup ----
 
+  // "auto" follows the main window theme (themechange events from theme.js).
+  const followsDocTheme = o.theme === "auto";
+  const syncTheme = () => {
+    const light =
+      o.theme === "light" ||
+      (followsDocTheme && document.documentElement.dataset.theme !== "dark");
+    root.classList.toggle("light", light);
+    backdrop.classList.toggle("light", light);
+  };
+
   const root = document.createElement("div");
-  root.className = `snooze-ctl snooze-root${o.theme === "light" ? " light" : ""}`;
+  root.className = "snooze-ctl snooze-root";
 
   const row = document.createElement("div");
   row.className = "snooze-row";
@@ -251,7 +261,7 @@ export function mountSnoozeControl(container, opts) {
   // Modal backdrop on body: never clipped by small windows, and the theme
   // class keeps the --sc-* tokens resolvable for the popover.
   const backdrop = document.createElement("div");
-  backdrop.className = `snooze-backdrop snooze-ctl${o.theme === "light" ? " light" : ""}`;
+  backdrop.className = "snooze-backdrop snooze-ctl";
   backdrop.hidden = true;
   backdrop.appendChild(pop);
   document.body.appendChild(backdrop);
@@ -259,6 +269,8 @@ export function mountSnoozeControl(container, opts) {
     if (e.target === backdrop) closePop(); // click outside panel dismisses
   });
   container.appendChild(root);
+  syncTheme();
+  if (followsDocTheme) document.addEventListener("themechange", syncTheme);
 
   // ---- behavior ----
 
@@ -369,6 +381,7 @@ export function mountSnoozeControl(container, opts) {
       mounted.delete(inst);
       document.removeEventListener("mousedown", onDocMouseDown);
       document.removeEventListener("keydown", onDocKey);
+      if (followsDocTheme) document.removeEventListener("themechange", syncTheme);
       root.remove();
       backdrop.remove();
     },

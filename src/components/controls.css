@@ -19,10 +19,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   background: var(--bg);
-  font-size: 22px;
-  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -41,14 +39,14 @@
 }
 
 .limit-tick-btn {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: white;
-  border-color: var(--accent);
+  border-color: var(--accent-solid);
 }
 
 .limit-tick-btn:hover {
-  background: #4338ca;
-  border-color: #4338ca;
+  background: var(--accent-solid-hover);
+  border-color: var(--accent-solid-hover);
 }
 
 .limit-value {
@@ -151,11 +149,11 @@
 
 /* ===== Break Button ===== */
 .btn-break {
-  color: #0d9488;
-  border-color: #99f6e4;
+  color: var(--teal);
+  border-color: var(--teal-border);
 }
 
 .btn-break:hover {
-  background: #f0fdfa;
-  border-color: #0d9488;
+  background: var(--teal-bg);
+  border-color: var(--teal);
 }

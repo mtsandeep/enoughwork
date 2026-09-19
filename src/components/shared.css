@@ -27,10 +27,10 @@
    Consumers set width, height, font-size/weight, color, and focus color. */
 .num-input {
   padding: 0 4px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
   font-family: inherit;
-  background: #fff;
+  background: var(--surface);
   text-align: center;
   outline: none;
   box-sizing: content-box;

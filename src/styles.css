@@ -19,14 +19,61 @@
   box-sizing: border-box;
 }
 
+/* Theme tokens. Light values are the defaults: windows without a data-theme
+   attr (overlay, break-countdown) must keep rendering exactly these. */
 :root {
+  color-scheme: light;
   --bg: #fafafa;
   --text: #111;
   --muted: #999;
   --accent: #4f46e5;
   --accent-light: #eef2ff;
+  --accent-hover: #4338ca;
+  --accent-solid: #4f46e5;
+  --accent-solid-hover: #4338ca;
   --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --teal: #0d9488;
+  --teal-bg: #f0fdfa;
+  --teal-border: #99f6e4;
+  --teal-solid: #0d9488;
+  --teal-solid-hover: #0f766e;
+  --amber: #f59e0b;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-hover: #9ca3af;
+  --divider: #f2f4f7;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
   --radius: 10px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #202020;
+  --text: #f3f3f3;
+  --muted: #a6a6a6;
+  --accent: #4f46e5;
+  --accent-light: #282347;
+  --accent-hover: #4338ca;
+  --accent-solid: #4f46e5;
+  --accent-solid-hover: #4338ca;
+  --danger: #ff6b73;
+  --danger-bg: rgba(255, 107, 115, 0.12);
+  --danger-border: rgba(255, 107, 115, 0.45);
+  --teal: #34d8c4;
+  --teal-bg: rgba(52, 216, 196, 0.12);
+  --teal-border: rgba(52, 216, 196, 0.45);
+  --teal-solid: #17b3a0;
+  --teal-solid-hover: #0f9488;
+  --amber: #fbbf24;
+  --border: #3f3f3f;
+  --border-strong: #4a4a4a;
+  --border-hover: #6d6d6d;
+  --divider: #2e2e2e;
+  --surface: #2b2b2b;
+  --surface-2: #323232;
 }
 
 body {
@@ -53,7 +100,7 @@ body {
    after the heatmap was removed.) */
 .heatmap-tooltip {
   position: fixed;
-  background: #1e1e2e;
+  background: #262626;
   color: #f0f0f5;
   font-size: 12px;
   padding: 6px 10px;
@@ -74,11 +121,24 @@ body {
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #1e1e2e;
+  border-top-color: #262626;
 }
 
 .heatmap-tooltip .tt-time {
   font-weight: 600;
+}
+
+/* Dark: lift the tooltip well above the page background so it reads as a
+   floating popover instead of blending in. */
+:root[data-theme="dark"] .heatmap-tooltip {
+  background: #3d3d3d;
+  color: #f3f3f3;
+  border: 1px solid #4f4f4f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .heatmap-tooltip::after {
+  border-top-color: #3d3d3d;
 }
 
 /* Buttons */
@@ -90,10 +150,11 @@ body {
 .btn {
   padding: 10px 24px;
   border-radius: var(--radius);
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border);
   background: var(--bg);
   font-size: 15px;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
   color: var(--text);
   transition: all 0.15s;
@@ -106,21 +167,32 @@ body {
 
 .btn-danger {
   color: var(--danger);
-  border-color: #fecaca;
+  border-color: var(--danger-border);
 }
 
 .btn-danger:hover {
-  background: #fef2f2;
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+/* Dark: the stop button rests neutral; red appears on hover. */
+:root[data-theme="dark"] .btn-danger {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+:root[data-theme="dark"] .btn-danger:hover {
+  color: var(--danger);
   border-color: var(--danger);
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: white;
-  border-color: var(--accent);
+  border-color: var(--accent-solid);
 }
 
 .btn-primary:hover {
-  background: #4338ca;
-  border-color: #4338ca;
+  background: var(--accent-solid-hover);
+  border-color: var(--accent-solid-hover);
 }

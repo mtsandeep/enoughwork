@@ -2,6 +2,8 @@
 
 **Set a daily screen time limit. Get a fullscreen overlay when you've had enough.**
 
+🌐 **[enoughwork.e4dx.com](https://enoughwork.e4dx.com)**
+
 EnoughWork is a daily limit enforcer — when you've been at the screen for 8 hours (or whatever you set), it covers all your monitors and tells you to stop. Simple.
 
 Built with [Tauri](https://tauri.app/) (Rust + webview). Not Electron.

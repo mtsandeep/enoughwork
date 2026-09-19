@@ -1,14 +1,15 @@
 /* Shared snooze/adjust control — self-contained (notify/event-notify don't
    load styles.css). Dark tokens by default, .light override. */
 
+/* Dark tokens follow the app theme; the yellow accent ties to the amber snooze bar. */
 .snooze-ctl {
-  --sc-panel: #1a1a2e;
-  --sc-panel-alt: #232338;
+  --sc-panel: #2b2b2b;
+  --sc-panel-alt: #333333;
   --sc-text: #fff;
-  --sc-muted: #a0a0b8;
-  --sc-border: #3a3a4e;
+  --sc-muted: #a6a6a6;
+  --sc-border: #454545;
   --sc-accent: #fde047;
-  --sc-accent-text: #1f2937;
+  --sc-accent-text: #1f1f1f;
 }
 
 .snooze-ctl.light {

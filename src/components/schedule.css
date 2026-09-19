@@ -104,8 +104,8 @@
   max-width: 248px;
   padding: 0;
   border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #eef0f3;
+  background: var(--surface);
+  border: 1px solid var(--border);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
               0 12px 28px rgba(16, 24, 40, 0.14);
   position: fixed;
@@ -142,7 +142,7 @@
 }
 .event-popover-skip:hover {
   color: var(--text);
-  background: #f3f4f6;
+  background: var(--surface-2);
 }
 .event-popover-skip[hidden] {
   display: none;
@@ -157,7 +157,7 @@
 .event-popover-actions {
   display: flex;
   gap: 0;
-  border-top: 1px solid #f2f4f7;
+  border-top: 1px solid var(--divider);
 }
 .event-popover-btn {
   flex: 1;
@@ -173,14 +173,14 @@
   transition: background 0.12s ease, color 0.12s ease;
 }
 .event-popover-btn + .event-popover-btn {
-  border-left: 1px solid #f2f4f7;
+  border-left: 1px solid var(--divider);
 }
 .event-popover-btn:hover {
-  background: #f9fafb;
+  background: var(--surface-2);
   color: var(--text);
 }
 .event-popover-btn.danger:hover {
-  background: #fef2f2;
+  background: var(--danger-bg);
   color: var(--danger);
 }
 
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 12px;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 .event-add-title {
   font-size: 16px;
@@ -230,7 +230,7 @@
   gap: 6px;
   padding: 10px;
   border-radius: var(--radius);
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   background: var(--bg);
   font-size: 14px;
   font-weight: 500;
@@ -266,8 +266,8 @@
 .event-input {
   padding: 10px 12px;
   border-radius: var(--radius);
-  border: 1.5px solid #e5e7eb;
-  background: #fff;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
   font-size: 15px;
   font-family: inherit;
   color: var(--text);
@@ -325,7 +325,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   background: var(--bg);
   font-size: 12px;
   font-weight: 600;
@@ -349,7 +349,7 @@
 .event-pill-btn {
   padding: 8px 18px;
   border-radius: 20px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   background: var(--bg);
   font-size: 14px;
   font-weight: 500;
@@ -461,13 +461,13 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--surface);
   transition: border-color 0.15s;
 }
 .event-row:hover {
-  border-color: #d1d5db;
+  border-color: var(--border-strong);
 }
 .event-row-triggered {
   opacity: 0.6;
@@ -488,7 +488,7 @@
   background: #99f6e4;
 }
 .event-row-dot.triggered-dot {
-  background: #d1d5db;
+  background: var(--border-strong);
 }
 
 .event-row-info {
@@ -554,7 +554,7 @@
 }
 .event-row-btn {
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
@@ -566,9 +566,51 @@
 }
 .event-row-btn:hover {
   color: var(--text);
-  border-color: #9ca3af;
+  border-color: var(--border-hover);
 }
 .event-row-btn.danger:hover {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/* ===== Dark theme overrides (one-off chip tints) ===== */
+:root[data-theme="dark"] .event-overflow {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+:root[data-theme="dark"] .event-overflow-inactive {
+  color: #b0b0b0;
+  background: #323232;
+  border-color: #4a4a4a;
+}
+:root[data-theme="dark"] .event-row-snoozed {
+  border-color: rgba(253, 230, 138, 0.35);
+  background: rgba(253, 230, 138, 0.07);
+}
+:root[data-theme="dark"] .event-badge-fullscreen {
+  color: #818cf8;
+  background: rgba(79, 70, 229, 0.2);
+  border-color: rgba(129, 140, 248, 0.45);
+}
+:root[data-theme="dark"] .event-badge-mini {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+:root[data-theme="dark"] .event-badge-break {
+  color: #5eead4;
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+:root[data-theme="dark"] .event-badge-recurring {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+/* Active chips keep light text — the deep accent is unreadable on its own tint. */
+:root[data-theme="dark"] .event-type-btn.active,
+:root[data-theme="dark"] .event-day-btn.active,
+:root[data-theme="dark"] .event-pill-btn.active {
+  color: var(--text);
 }

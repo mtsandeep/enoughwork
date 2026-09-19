@@ -16,12 +16,13 @@ import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate, openUp
 import { mountSnoozeControl } from "./snooze-control.js";
 import "./break-picker.js";
 import "./schedule.js";
+import "./theme.js";
 
 // Snooze control (owns its own label from the sticky defaults)
 const snoozeCtl = mountSnoozeControl($("#snooze-slot"), {
   category: "limit",
   kind: "snooze",
-  theme: "light",
+  theme: "auto",
   btnClass: "btn btn-snooze",
   getEndsAtBase: () => Math.floor(Date.now() / 1000),
   onApply: async (m) => {
@@ -201,7 +202,7 @@ function render() {
     statusEl.classList.add("status-active");
   } else if (status === "on_break") {
     statusEl.textContent = "On Break";
-    statusEl.style.color = "#0d9488";
+    statusEl.classList.add("status-break");
   } else if (status === "snoozed") {
     const remainingSecs = snooze_until
       ? Math.max(0, snooze_until - Math.floor(Date.now() / 1000))

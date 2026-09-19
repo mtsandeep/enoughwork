@@ -4,7 +4,7 @@
 .dev-badge {
   position: fixed;
   top: 16px;
-  left: 16px;
+  left: 58px; /* after the theme toggle */
   background: var(--accent);
   color: white;
   font-size: 11px;
@@ -20,7 +20,7 @@
 .update-badge-row {
   position: fixed;
   top: 16px;
-  left: 16px;
+  left: 58px; /* after the theme toggle */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -37,9 +37,9 @@
   transition: background 0.15s, opacity 0.15s;
 }
 
-/* When dev badge is present, shift update badge to the right */
+/* When dev badge is present, shift update badge past it */
 .update-badge-row.has-dev-badge {
-  left: 70px;
+  left: 112px;
 }
 
 .update-badge:hover {
@@ -75,8 +75,8 @@
   align-items: flex-start;
   gap: 12px;
   padding: 8px 16px;
-  background: #f0f0f0;
-  border-top: 1px solid #e0e0e0;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
   font-size: 12px;
   flex-shrink: 0;
 }
@@ -103,8 +103,8 @@
 .debug-btn {
   padding: 4px 12px;
   border-radius: 6px;
-  border: 1px solid #d0d0d0;
-  background: #fff;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
   font-size: 12px;
   cursor: pointer;
   color: var(--text);
@@ -123,7 +123,7 @@
 
 .debug-btn-danger:hover {
   border-color: var(--danger);
-  background: #fef2f2;
+  background: var(--danger-bg);
 }
 
 /* ===== Settings Gear ===== */
@@ -150,7 +150,7 @@
   align-items: center;
   gap: 12px;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-close {
@@ -249,7 +249,7 @@
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 6px solid #999;
+  border-top: 6px solid var(--muted);
   pointer-events: none;
 }
 
@@ -275,12 +275,12 @@
 
 .settings-input {
   padding: 8px 12px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
   font-size: 13px;
   font-family: inherit;
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
   transition: border-color 0.15s;
   outline: none;
 }
@@ -306,7 +306,7 @@
 .toggle-slider {
   position: absolute;
   inset: 0;
-  background: #d1d5db;
+  background: var(--border-strong);
   border-radius: 14px;
   transition: background 0.2s;
 }
