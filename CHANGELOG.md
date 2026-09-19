@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-09-19
+
 ### Added
 - Dark theme with a light/dark toggle in the main window — defaults to your system theme
 
