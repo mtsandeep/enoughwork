@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-10-03
+
 ### Fixed
 - Next day sometimes never started tracking and kept showing "Stopped — resumes tomorrow" after the previous day was stopped: a stale interrupt left behind by "Stop for today" made the midnight rollover hold the new day on "stopped", and the auto-resume could be skipped by a state race. Stopping now always starts fresh the next day; a missed rollover event also self-heals within a second.
 
