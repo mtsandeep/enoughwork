@@ -441,3 +441,42 @@ pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) {
         state.status = "active".into();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A manual stop must roll over into a fresh "active" day.
+    #[test]
+    fn rollover_after_manual_stop_starts_active() {
+        let mut st = TimerState {
+            status: "stopped".into(),
+            active_interrupt: None,
+            ..TimerState::default()
+        };
+        let today = effective_date("00:00");
+        reset_state_for_new_day(&mut st, &today);
+        assert_eq!(st.date, today);
+        assert_eq!(st.status, "active");
+        assert!(st.pending_welcome.is_none());
+    }
+
+    /// An interrupt still open at rollover holds the day on "stopped" until greeted.
+    #[test]
+    fn rollover_with_open_interrupt_waits_for_welcome() {
+        let mut st = TimerState {
+            status: "limit_reached".into(),
+            active_interrupt: Some(ActiveInterrupt {
+                kind: "limit".into(),
+                label: "Enough Work".into(),
+                event_id: None,
+            }),
+            ..TimerState::default()
+        };
+        let today = effective_date("00:00");
+        reset_state_for_new_day(&mut st, &today);
+        assert_eq!(st.status, "stopped");
+        let w = st.pending_welcome.expect("welcome pending");
+        assert_eq!(w.last_label, "Enough Work");
+    }
+}

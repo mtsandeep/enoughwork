@@ -60,18 +60,23 @@ async function broadcastDayWelcome(lastLabel) {
 }
 
 /**
- * Morph leftover interrupt windows into the day greeting.
- * If none are open (closed / crash / restart), skip — no new window.
+ * Morph leftover interrupt windows into the day greeting; with none open,
+ * dismiss the pending welcome so the day starts tracking. Safe to call from
+ * the 1s poll — broadcasts at most once per day, and never gates on the
+ * cached state.current (stale at rollover).
  */
+let welcomeBroadcastDate = null;
+
 export async function presentDayWelcomeIfOverlayOpen(lastLabel) {
   if (!hasOpenInterruptWindows()) {
     // No leftover UI — clear pending welcome and start a normal day.
-    if (state.current?.pending_welcome) {
-      state.current = await invoke("dismiss_day_welcome");
-      render();
-    }
+    state.current = await invoke("dismiss_day_welcome");
+    render();
     return false;
   }
+  const today = state.current?.date;
+  if (today && welcomeBroadcastDate === today) return true;
+  welcomeBroadcastDate = today;
   await broadcastDayWelcome(lastLabel);
   return true;
 }
@@ -567,6 +572,8 @@ listen("day-rolled", async (event) => {
   showingReminderId = null;
   const welcome = event.payload;
   if (welcome && (welcome.last_label || welcome.lastLabel)) {
+    // Fresh state — the cache still holds yesterday's data at rollover.
+    state.current = await invoke("get_state");
     await presentDayWelcomeIfOverlayOpen(welcome.last_label || welcome.lastLabel);
   } else if (hasOpenInterruptWindows()) {
     // Clean day but stale windows — just close them

@@ -37,6 +37,10 @@ async function refreshState() {
   try {
     state.current = await invoke("get_state");
     render();
+    // Self-heal a pending day-welcome the "day-rolled" event may have missed.
+    if (state.current?.pending_welcome) {
+      await presentDayWelcomeIfOverlayOpen(state.current.pending_welcome.last_label);
+    }
   } catch (e) {
     console.error("get_state error:", e);
   }

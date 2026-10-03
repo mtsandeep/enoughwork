@@ -103,6 +103,8 @@ pub fn stop_for_today(app_handle: tauri::AppHandle) -> TimerState {
     state.status = "stopped".into();
     state.snooze_until = None;
     state.snooze_started_at = None;
+    // The interrupt was handled — don't hold tomorrow's rollover on "stopped".
+    state.active_interrupt = None;
     state.clone()
 }
 
@@ -112,6 +114,7 @@ pub fn resume_tracking(app_handle: tauri::AppHandle) -> TimerState {
     let mut state = app_data.state.lock().unwrap();
 
     state.pending_welcome = None;
+    state.active_interrupt = None;
 
     // If already past limit, go to limit_reached not active
     if state.elapsed_secs >= state.limit_mins * 60 {
@@ -481,13 +484,16 @@ pub fn mark_event_missed_cmd(id: u32, reason: String, app_handle: tauri::AppHand
 }
 
 /// Clear the next-day welcome card and start tracking for today.
+/// No-op when nothing is pending.
 #[tauri::command]
 pub fn dismiss_day_welcome(app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
-    state.pending_welcome = None;
-    if state.status == "stopped" {
-        state.status = "active".into();
+    if state.pending_welcome.is_some() {
+        state.pending_welcome = None;
+        if state.status == "stopped" {
+            state.status = "active".into();
+        }
     }
     state.clone()
 }
