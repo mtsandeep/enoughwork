@@ -100,6 +100,12 @@ pub fn snooze(minutes: u64, remember: Option<bool>, app_handle: tauri::AppHandle
 pub fn stop_for_today(app_handle: tauri::AppHandle) -> TimerState {
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
+    // A snooze cut short only counts the time that actually passed.
+    if let Some(until) = state.snooze_until {
+        let now_ts = chrono::Local::now().timestamp();
+        let remaining = (until - now_ts).max(0) as u64;
+        state.total_snooze_secs = state.total_snooze_secs.saturating_sub(remaining);
+    }
     state.status = "stopped".into();
     state.snooze_until = None;
     state.snooze_started_at = None;
@@ -129,6 +135,12 @@ pub fn resume_tracking(app_handle: tauri::AppHandle) -> TimerState {
         let _ = app_handle.emit("show-overlay", ());
     } else {
         state.status = "active".into();
+    }
+    // A snooze cut short by resuming only counts the time that actually passed.
+    if let Some(until) = state.snooze_until {
+        let now_ts = chrono::Local::now().timestamp();
+        let remaining = (until - now_ts).max(0) as u64;
+        state.total_snooze_secs = state.total_snooze_secs.saturating_sub(remaining);
     }
     state.snooze_until = None;
     state.snooze_started_at = None;

@@ -39,6 +39,16 @@ let prevOffClockActive = false;
 // Over-work UI stays hidden until this much has accumulated past a stop.
 const OFF_CLOCK_THRESHOLD_SECS = 10 * 60;
 
+// Compact "5m 30s" duration, matching the snooze status text style
+function formatSnoozeDur(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return h > 0
+    ? `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`
+    : `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
 async function refreshState() {
   try {
     state.current = await invoke("get_state");
@@ -186,7 +196,8 @@ function render() {
     breakStatsEl.hidden = true;
   }
 
-  // Snooze bar
+  // Snooze bar — also stays up (full) after the snooze ends, so the day's
+  // snooze total keeps a home; hover shows it.
   const snoozeBar = $("#snooze-bar");
   if (status === "snoozed" && snooze_until) {
     const now = Date.now() / 1000;
@@ -196,10 +207,15 @@ function render() {
     const pct2 = total > 0 ? Math.min((elapsed / total) * 100, 100) : 0;
 
     snoozeBar.hidden = false;
+    snoozeBar.dataset.tooltip = `Snoozed ${formatSnoozeDur(elapsed)} of ${formatSnoozeDur(total)} today`;
     $("#snooze-progress").style.width = pct2 + "%";
 
     // Show snooze button during snooze to extend
     snoozeCtl.setHidden(false);
+  } else if ((state.current.total_snooze_secs || 0) >= 60) {
+    snoozeBar.hidden = false;
+    snoozeBar.dataset.tooltip = `Snoozed ${formatSnoozeDur(state.current.total_snooze_secs)} today`;
+    $("#snooze-progress").style.width = "100%";
   } else {
     snoozeBar.hidden = true;
   }
