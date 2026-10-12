@@ -103,6 +103,8 @@ pub fn stop_for_today(app_handle: tauri::AppHandle) -> TimerState {
     state.status = "stopped".into();
     state.snooze_until = None;
     state.snooze_started_at = None;
+    // Keep still_working_secs — it's the day's total over-work past stops,
+    // only cleared by the day rollover.
     // The interrupt was handled — don't hold tomorrow's rollover on "stopped".
     state.active_interrupt = None;
     state.clone()

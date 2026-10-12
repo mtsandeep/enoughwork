@@ -96,6 +96,11 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 state.active_secs += 1;
             }
 
+            // Count time still at the machine (on + unlocked) while stopped.
+            if state.status == "stopped" && system_active {
+                state.still_working_secs += 1;
+            }
+
             if (state.status == "active" || state.status == "on_break") && time_running {
                 state.elapsed_secs += 1;
 

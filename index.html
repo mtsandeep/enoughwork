@@ -43,6 +43,8 @@
     </svg>
   </button>
 
+  <button class="off-clock-chip" id="btn-off-clock" title="Off the clock — click to show"></button>
+
   <button class="topbar-icon quiet-icon" id="btn-quiet-overlay" title="Minimal notifications (today only)">
     <svg id="quiet-icon-on" width="22" height="22" viewBox="0 0 505.259 505.259">
       <g transform="translate(1 13)">
@@ -98,6 +100,12 @@
     </div>
 
     <div class="status-text" id="status">Active</div>
+
+    <div class="off-clock-overlay" id="off-clock-overlay">
+      <div class="off-clock-headline">More Work?</div>
+      <div class="off-clock-title">Off the clock</div>
+      <div class="off-clock-time" id="off-clock-time">0h 00m 00s</div>
+    </div>
 
     <div class="controls">
       <div class="limit-setting" id="limit-setting">

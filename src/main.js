@@ -33,6 +33,12 @@ const snoozeCtl = mountSnoozeControl($("#snooze-slot"), {
 
 let prevBreakStatus = false;
 
+let offClockCollapsed = false;
+let prevOffClockActive = false;
+
+// Over-work UI stays hidden until this much has accumulated past a stop.
+const OFF_CLOCK_THRESHOLD_SECS = 10 * 60;
+
 async function refreshState() {
   try {
     state.current = await invoke("get_state");
@@ -232,6 +238,20 @@ function render() {
     statusEl.classList.add("status-stopped");
   }
 
+  // Off-the-clock tally: time at the machine since the day was stopped.
+  const stillWorking = state.current.still_working_secs || 0;
+  const offClockActive = status === "stopped" && stillWorking > OFF_CLOCK_THRESHOLD_SECS;
+  if (offClockActive && !prevOffClockActive) offClockCollapsed = false;
+  prevOffClockActive = offClockActive;
+  const offClockBtn = $("#btn-off-clock");
+  offClockBtn.classList.toggle("visible", offClockActive && offClockCollapsed);
+  $("#off-clock-overlay").classList.toggle("visible", offClockActive && !offClockCollapsed);
+  if (offClockActive) {
+    const tally = formatTime(stillWorking);
+    $("#off-clock-time").textContent = tally;
+    offClockBtn.textContent = tally;
+  }
+
   // Limit setting display
   const lH = Math.floor(limit_mins / 60);
   const lM = limit_mins % 60;
@@ -359,6 +379,18 @@ $("#btn-stop").addEventListener("click", async () => {
 $("#btn-resume").addEventListener("click", async () => {
   state.current = await invoke("resume_tracking");
   render();
+});
+
+$("#btn-off-clock").addEventListener("click", () => {
+  offClockCollapsed = !offClockCollapsed;
+  render();
+});
+
+$("#off-clock-overlay").addEventListener("click", () => {
+  if (!offClockCollapsed) {
+    offClockCollapsed = true;
+    render();
+  }
 });
 
 listen("day-rolled", async () => {

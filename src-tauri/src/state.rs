@@ -61,6 +61,9 @@ pub struct TimerState {
     pub total_snooze_secs: u64,
     #[serde(default)]
     pub quiet_overlay: bool,
+    /// Time worked past a manual stop while the system stayed on and unlocked.
+    #[serde(default)]
+    pub still_working_secs: u64,
     // Break fields
     #[serde(default)]
     pub break_until: Option<i64>,
@@ -99,6 +102,7 @@ impl Default for TimerState {
             snooze_started_at: None,
             total_snooze_secs: 0,
             quiet_overlay: false,
+            still_working_secs: 0,
             break_until: None,
             break_started_at: None,
             break_duration_secs: 0,
@@ -423,6 +427,7 @@ pub fn reset_state_for_new_day(state: &mut TimerState, today: &str) {
     state.snooze_started_at = None;
     state.total_snooze_secs = 0;
     state.quiet_overlay = false;
+    state.still_working_secs = 0;
     state.break_until = None;
     state.break_started_at = None;
     state.break_duration_secs = 0;
@@ -478,5 +483,18 @@ mod tests {
         assert_eq!(st.status, "stopped");
         let w = st.pending_welcome.expect("welcome pending");
         assert_eq!(w.last_label, "Enough Work");
+    }
+
+    /// The still-working (post-stop) counter resets on a new day.
+    #[test]
+    fn rollover_resets_still_working_secs() {
+        let mut st = TimerState {
+            status: "stopped".into(),
+            still_working_secs: 3600,
+            ..TimerState::default()
+        };
+        let today = effective_date("00:00");
+        reset_state_for_new_day(&mut st, &today);
+        assert_eq!(st.still_working_secs, 0);
     }
 }
