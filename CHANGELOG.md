@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-10-12
+
 ### Added
 - "More Work? off the clock" — after stopping the timer for the day, the app keeps a private tally of time you're still at the computer (system on and unlocked). Once it passes 10 minutes, a soft overlay shows the day's total extra time past your planned stop; click anywhere on it to collapse it to a small amber timer in the topbar, and click that timer to bring the overlay back. The tally freezes while the screen is locked or the machine sleeps, keeps accumulating across stop/resume for the whole day, and clears at the day rollover — and never counts toward your tracked work time.
 - Snooze bar hover tooltip — while snoozing it shows time snoozed so far vs the day's total ("Snoozed 8m 30s of 25m today"); after the snooze ends the bar stays full for the rest of the day instead of disappearing, with the day's total on hover
