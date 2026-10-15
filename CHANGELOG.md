@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-10-15
+
 ### Added
 - End-of-day messages — the stopped state shows a daily note from `src/stopped-messages.js` instead of "Stopped — resumes tomorrow"
 - Snoozed status has an alarm icon and live countdown; hover shows snoozed-so-far vs the day's total
