@@ -71,7 +71,6 @@
 
 .progress-fill {
   fill: var(--accent);
-  transition: width 1s linear;
 }
 
 .progress-fill.over-limit {
@@ -81,7 +80,6 @@
 .progress-break {
   fill: #99f6e4;
   opacity: 0.8;
-  transition: width 1s linear, x 1s linear;
   cursor: pointer;
 }
 
@@ -93,7 +91,10 @@
   font-size: 16px;
   font-weight: 500;
   text-align: center;
-  min-height: 24px;
+  line-height: 1.45;
+  /* Two lines reserved so state changes never shift the layout */
+  min-height: 46px;
+  padding-top: 10px;
 }
 
 .status-active {
@@ -110,6 +111,63 @@
 
 .status-stopped {
   color: var(--danger);
+}
+
+/* End-of-day note. The tint sits on an opaque base so the puddle behind
+   the card only peeks out below its bottom edge. */
+.status-done {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 17px;
+  color: var(--text);
+  background:
+    linear-gradient(rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.08)),
+    var(--bg);
+  border-left: 3px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  padding: 12px 22px;
+  width: fit-content;
+  margin: 0 auto;
+  position: relative;
+}
+
+.status-done::before {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  background-color: var(--amber);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2v10'/><path d='M18.36 6.64a9 9 0 1 1-12.73 0'/></svg>") no-repeat center / contain;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2v10'/><path d='M18.36 6.64a9 9 0 1 1-12.73 0'/></svg>") no-repeat center / contain;
+}
+
+/* Puddle shadow behind the card, peeking a few px below */
+.status-done::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  width: 85%;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  filter: blur(6px);
+  z-index: -1;
+}
+
+:root[data-theme="dark"] .status-done {
+  background:
+    linear-gradient(rgba(251, 191, 36, 0.08), rgba(251, 191, 36, 0.08)),
+    var(--bg);
+  border-left-color: rgba(251, 191, 36, 0.3);
+}
+
+:root[data-theme="dark"] .status-done::after {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 /* ===== Off-the-clock: over-work overlay + topbar tally ===== */
@@ -142,7 +200,6 @@
   pointer-events: auto;
 }
 
-/* Lines rise in with a slight stagger */
 .off-clock-overlay > * {
   opacity: 0;
   transform: translateY(8px);
@@ -224,7 +281,6 @@
   color: var(--text);
 }
 
-/* Alarm-clock icon inline with the snoozed status text */
 .status-snooze-icon {
   vertical-align: -2px;
   margin-right: 5px;

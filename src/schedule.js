@@ -364,7 +364,6 @@ $("#events-back").addEventListener("click", () => {
 });
 
 function openEventForm(type) {
-  eventsPage.hidden = true;
   stopEventsListTick();
   resetEventForm();
   if (type) {
@@ -372,6 +371,11 @@ function openEventForm(type) {
     applyEventFormState();
   }
   evtPanel.hidden = false;
+  // Keep the events page under the rising panel; hide it once the entrance
+  // finishes (unless the user already backed out).
+  setTimeout(() => {
+    if (!evtPanel.hidden) eventsPage.hidden = true;
+  }, 220);
 }
 
 $("#events-add-reminder").addEventListener("click", () => openEventForm("reminder"));

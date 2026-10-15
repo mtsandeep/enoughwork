@@ -22,9 +22,13 @@ export function resolvedTheme() {
 }
 
 export function applyTheme() {
+  const root = document.documentElement;
+  // Snap colors into place; transitions would flash through the flip.
+  root.classList.add("theme-switching");
   const resolved = resolvedTheme();
-  document.documentElement.dataset.theme = resolved;
+  root.dataset.theme = resolved;
   document.dispatchEvent(new CustomEvent("themechange", { detail: resolved }));
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-switching")));
   return resolved;
 }
 
@@ -48,6 +52,21 @@ export function initTheme(onChange) {
 
 // Header toggle: light / dark icons; the shown one reflects the effective
 // theme. Click switches to the other.
+// Wobbly closed blob path around (cx, cy) — a jittered circle with a couple
+// of harmonics so the edge reads as paint, not geometry. Same point count
+// and phases on every call, so two sizes interpolate cleanly.
+function blobPath(cx, cy, R, points = 40) {
+  let d = "";
+  for (let i = 0; i < points; i++) {
+    const a = (i / points) * Math.PI * 2;
+    const w = 1 + 0.14 * Math.sin(3 * a + 1.7) + 0.08 * Math.sin(5 * a + 0.4);
+    const x = cx + Math.cos(a) * R * w;
+    const y = cy + Math.sin(a) * R * w;
+    d += `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+  return `${d} Z`;
+}
+
 export function initThemeToggle(button) {
   if (!button) return;
   const icons = {
@@ -57,14 +76,37 @@ export function initThemeToggle(button) {
 
   function refresh() {
     const mode = resolvedTheme();
-    // SVG elements ignore the hidden IDL property — toggle style.display.
-    for (const [m, el] of Object.entries(icons)) el.style.display = m === mode ? "" : "none";
+    for (const [m, el] of Object.entries(icons)) {
+      const on = m === mode;
+      el.style.opacity = on ? "1" : "0";
+      el.style.transform = on ? "" : "rotate(-90deg) scale(0.6)";
+    }
     button.title = `${mode[0].toUpperCase() + mode.slice(1)} theme`;
   }
 
-  button.addEventListener("click", () => {
-    setTheme(resolvedTheme() === "dark" ? "light" : "dark");
-    refresh();
+  button.addEventListener("click", (e) => {
+    const next = resolvedTheme() === "dark" ? "light" : "dark";
+    const rect = button.getBoundingClientRect();
+    const x = e.clientX || rect.left + rect.width / 2;
+    const y = e.clientY || rect.top + rect.height / 2;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (!document.startViewTransition || reduce) {
+      setTheme(next);
+      refresh();
+    } else {
+      // Paint drop from the click; overshoot clears the farthest corner
+      // even at the wobble's thinnest (~0.78× r).
+      const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) * 1.35;
+      const transition = document.startViewTransition(() => setTheme(next));
+      transition.ready.then(() => {
+        refresh();
+        document.documentElement.animate(
+          { clipPath: [`path("${blobPath(x, y, 0)}")`, `path("${blobPath(x, y, r)}")`] },
+          { duration: 850, easing: "cubic-bezier(0.65, 0, 0.25, 1)", pseudoElement: "::view-transition-new(root)" },
+        );
+      }).catch(() => {});
+    }
   });
 
   initTheme(refresh);

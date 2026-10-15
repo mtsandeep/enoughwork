@@ -14,6 +14,7 @@ import {
 } from "./overlays.js";
 import { applyPendingSettings, debugBar, checkForUpdate, startAutoUpdate, openUpdateNotifyPopup } from "./settings.js";
 import { mountSnoozeControl } from "./snooze-control.js";
+import { STOPPED_MESSAGES } from "./stopped-messages.js";
 import "./break-picker.js";
 import "./schedule.js";
 import "./theme.js";
@@ -33,13 +34,15 @@ const snoozeCtl = mountSnoozeControl($("#snooze-slot"), {
 
 let prevBreakStatus = false;
 
+let lastBarMin = -1;
+let lastBarLimit = -1;
+
 let offClockCollapsed = false;
 let prevOffClockActive = false;
 
 // Over-work UI stays hidden until this much has accumulated past a stop.
 const OFF_CLOCK_THRESHOLD_SECS = 10 * 60;
 
-// Compact "5m 30s" duration, matching the snooze status text style
 function formatSnoozeDur(secs) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
@@ -49,13 +52,59 @@ function formatSnoozeDur(secs) {
     : `${m}m ${String(s).padStart(2, "0")}s`;
 }
 
-// Alarm-clock icon shown before the snoozed status text
 const SNOOZE_ICON = `<svg class="status-snooze-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>`;
+
+// One end-of-day message per day, stable across restarts.
+function stoppedMessageFor(dateStr) {
+  const dayIdx = Math.floor(new Date(`${dateStr}T00:00:00`).getTime() / 86400000);
+  return STOPPED_MESSAGES[dayIdx % STOPPED_MESSAGES.length];
+}
+
+// Re-render only when something displayed changed; hidden windows skip
+// the DOM work except while on_break (its overlay countdown is fed by render).
+let lastRenderSig = null;
+let forceRender = true;
+
+// Everything render() displays, hashed; the minute bucket keeps
+// wall-clock-derived bits (upcoming event dots) fresh.
+function renderSignature(st) {
+  const now = Math.floor(Date.now() / 1000);
+  const snoozeLeft = st.status === "snoozed" && st.snooze_until ? Math.max(0, st.snooze_until - now) : 0;
+  const breakLeft = st.status === "on_break" && st.break_until ? Math.max(0, st.break_until - now) : 0;
+  const evs = (st.events || [])
+    .map(e => `${e.id}:${+e.triggered}:${e.miss_reason || ""}:${e.snoozed_until || 0}:${e.elapsed_at_trigger || 0}:${+e.recurred_today}`)
+    .join(",");
+  return [
+    st.date, st.status, st.elapsed_secs, st.limit_mins,
+    snoozeLeft, st.total_snooze_secs, st.still_working_secs,
+    breakLeft, st.break_count, st.total_break_secs,
+    (st.break_segments || []).length, st.quiet_overlay ? 1 : 0,
+    st.pending_welcome ? 1 : 0, Math.floor(now / 60), evs,
+  ].join("|");
+}
+
+// Same-string writes still dirty the DOM — only touch changed nodes.
+function setText(el, str) {
+  if (el.textContent !== str) el.textContent = str;
+}
+
+function setHidden(el, v) {
+  if (el.hidden !== v) el.hidden = v;
+}
 
 async function refreshState() {
   try {
     state.current = await invoke("get_state");
-    render();
+    const sig = renderSignature(state.current);
+    if (forceRender || sig !== lastRenderSig) {
+      lastRenderSig = sig;
+      let visible = true;
+      try { visible = await mainWindow.isVisible(); } catch { /* keep rendering */ }
+      if (forceRender || visible || state.current.status === "on_break") {
+        forceRender = false;
+        render();
+      }
+    }
     // Self-heal a pending day-welcome the "day-rolled" event may have missed.
     if (state.current?.pending_welcome) {
       await presentDayWelcomeIfOverlayOpen(state.current.pending_welcome.last_label);
@@ -95,21 +144,25 @@ function render() {
 
   const pct = Math.min((elapsed_secs / limit_secs) * 100, 100);
 
-  // Elapsed time - big. Includes time actually spent snoozed (display only;
-  // the progress bar below and all limit math stay on raw elapsed_secs).
+  // Includes time actually spent snoozed; the bar and limit math stay on raw elapsed.
   const snoozeTotal = state.current.total_snooze_secs || 0;
   const snoozeRemaining = status === "snoozed" && snooze_until
     ? Math.max(0, snooze_until - Math.floor(Date.now() / 1000))
     : 0;
-  $("#elapsed").textContent = formatTime(elapsed_secs + Math.max(0, snoozeTotal - snoozeRemaining));
+  setText($("#elapsed"), formatTime(elapsed_secs + Math.max(0, snoozeTotal - snoozeRemaining)));
 
-  // Progress bar: simple fill (no break segments for now)
+  // Minute resolution — per-second steps are sub-pixel, and width writes dirty layout.
   const barEl = $("#progress-svg");
   const svgNS = "http://www.w3.org/2000/svg";
-  const elapsedPct = limit_secs > 0 ? Math.min((elapsed_secs / limit_secs) * 100, 100) : 0;
   const progressEl = $("#progress");
-  progressEl.setAttribute("width", elapsedPct);
-  progressEl.classList.toggle("over-limit", elapsed_secs >= limit_secs);
+  const barMin = Math.floor(elapsed_secs / 60);
+  if (barMin !== lastBarMin || limit_secs !== lastBarLimit) {
+    lastBarMin = barMin;
+    lastBarLimit = limit_secs;
+    const elapsedPct = limit_secs > 0 ? Math.min((elapsed_secs / limit_secs) * 100, 100) : 0;
+    progressEl.setAttribute("width", elapsedPct);
+    progressEl.classList.toggle("over-limit", elapsed_secs >= limit_secs);
+  }
   barEl.querySelectorAll(".progress-fill-seg").forEach(el => el.remove());
 
   // Render break segments
@@ -175,44 +228,46 @@ function render() {
   snoozeCtl.setHidden(!pastLimit && status !== "limit_reached" && status !== "snoozed");
 
   // Show/hide stop and resume based on status
-  $("#btn-stop").hidden = status === "stopped";
-  $("#btn-resume").hidden = status !== "stopped";
+  setHidden($("#btn-stop"), status === "stopped");
+  setHidden($("#btn-resume"), status !== "stopped");
 
   // Take Break button — only when active
-  $("#btn-take-break").hidden = status !== "active";
+  setHidden($("#btn-take-break"), status !== "active");
 
   // Quick-add event icon — only when active (same row as Take Break)
-  $("#btn-event-add").hidden = status !== "active";
+  setHidden($("#btn-event-add"), status !== "active");
 
   // Resume Work button — only when on break
-  $("#btn-resume-break").hidden = status !== "on_break";
+  setHidden($("#btn-resume-break"), status !== "on_break");
 
   // Stop/snooze hidden during break
   if (status === "on_break") {
-    $("#btn-stop").hidden = true;
+    setHidden($("#btn-stop"), true);
     snoozeCtl.setHidden(true);
-    $("#btn-resume").hidden = true;
+    setHidden($("#btn-resume"), true);
   }
 
   // Break stats
   const breakStatsEl = $("#break-stats");
   if (state.current.break_count > 0 && state.current.total_break_secs >= 60 && status !== "on_break") {
     const bm = Math.floor(state.current.total_break_secs / 60);
-    breakStatsEl.textContent = `Breaks today: ${state.current.break_count} (${bm}m total)`;
-    breakStatsEl.hidden = false;
+    setText(breakStatsEl, `Breaks today: ${state.current.break_count} (${bm}m total)`);
+    setHidden(breakStatsEl, false);
   } else {
-    breakStatsEl.hidden = true;
+    setHidden(breakStatsEl, true);
   }
 
-  // Status
+  // Status — write only when changed (the snoozed branch embeds SVG HTML)
   const statusEl = $("#status");
   statusEl.className = "status-text";
   delete statusEl.dataset.tooltip;
+  let statusHtml = null;
+  let statusText = null;
   if (status === "active") {
-    statusEl.textContent = "Active";
+    statusText = ""; // no status text while normally tracking — space stays reserved
     statusEl.classList.add("status-active");
   } else if (status === "on_break") {
-    statusEl.textContent = "On Break";
+    statusText = "On Break";
     statusEl.classList.add("status-break");
   } else if (status === "snoozed") {
     const remainingSecs = snooze_until
@@ -229,17 +284,22 @@ function render() {
     } else {
       timeStr = `${rs}s`;
     }
-    statusEl.innerHTML = `${SNOOZE_ICON}Snoozed (${timeStr} left)`;
+    statusHtml = `${SNOOZE_ICON}Snoozed (${timeStr} left)`;
     statusEl.classList.add("status-snoozed");
     const snoozeTotal = state.current.total_snooze_secs || 0;
     const snoozedSoFar = Math.max(0, snoozeTotal - remainingSecs);
     statusEl.dataset.tooltip = `Snoozed ${formatSnoozeDur(snoozedSoFar)} of ${formatSnoozeDur(snoozeTotal)} today`;
   } else if (status === "limit_reached") {
-    statusEl.textContent = "Limit reached";
+    statusText = "Limit reached";
     statusEl.classList.add("status-stopped");
   } else if (status === "stopped") {
-    statusEl.textContent = "Stopped — resumes tomorrow";
-    statusEl.classList.add("status-stopped");
+    statusText = stoppedMessageFor(state.current.date);
+    statusEl.classList.add("status-done");
+  }
+  if (statusHtml !== null) {
+    if (statusEl.innerHTML !== statusHtml) statusEl.innerHTML = statusHtml;
+  } else if (statusEl.textContent !== statusText) {
+    statusEl.textContent = statusText;
   }
 
   // Off-the-clock tally: time at the machine since the day was stopped.
@@ -252,14 +312,14 @@ function render() {
   $("#off-clock-overlay").classList.toggle("visible", offClockActive && !offClockCollapsed);
   if (offClockActive) {
     const tally = formatTime(stillWorking);
-    $("#off-clock-time").textContent = tally;
-    offClockBtn.textContent = tally;
+    setText($("#off-clock-time"), tally);
+    setText(offClockBtn, tally);
   }
 
   // Limit setting display
   const lH = Math.floor(limit_mins / 60);
   const lM = limit_mins % 60;
-  $("#limit-display").textContent = lM > 0 ? `${lH}h ${String(lM).padStart(2, "0")}m` : `${lH}h 00m`;
+  setText($("#limit-display"), lM > 0 ? `${lH}h ${String(lM).padStart(2, "0")}m` : `${lH}h 00m`);
 
   // Quiet overlay icon
   const quietBtn = $("#btn-quiet-overlay");
@@ -500,8 +560,31 @@ $("#dbg-1min-event").addEventListener("click", async () => {
   render();
 });
 
-// Refresh every second
-setInterval(refreshState, 1000);
+// Poll: 1s while visible, 5s hidden to tray; focus wakes the sleep so a
+// reopened window resumes its 1s cadence immediately.
+let wakePoll = () => {};
+function sleepPoll(ms) {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => { wakePoll = () => {}; resolve(); }, ms);
+    wakePoll = () => { clearTimeout(t); wakePoll = () => {}; resolve(); };
+  });
+}
+
+(async function pollLoop() {
+  for (;;) {
+    await refreshState();
+    let visible = true;
+    try { visible = await mainWindow.isVisible(); } catch { /* assume visible */ }
+    const fast = visible || state.current?.status === "on_break";
+    await sleepPoll(fast ? 1000 : 5000);
+  }
+})();
+
+// Re-showing/focusing the window must repaint even if nothing changed since.
+mainWindow.listen("tauri://focus", () => {
+  forceRender = true;
+  wakePoll();
+});
 
 // Initial load — script is at end of body, DOM is ready
 (async () => {

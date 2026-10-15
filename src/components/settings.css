@@ -97,6 +97,7 @@
 .debug-buttons {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
@@ -139,6 +140,15 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
+  /* Replays each time the page is un-hidden */
+  animation: page-rise 0.2s ease-out;
+}
+
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 
 .settings-page[hidden] {

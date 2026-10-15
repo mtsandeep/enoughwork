@@ -95,6 +95,23 @@ body {
   flex-direction: column;
 }
 
+/* Set while switching themes so colors snap instead of animating (flash).
+   The theme toggle's icon flip is exempt — it's meant to animate through
+   the switch. */
+.theme-switching *:not(.theme-toggle *),
+.theme-switching *:not(.theme-toggle *)::before,
+.theme-switching *:not(.theme-toggle *)::after {
+  transition: none !important;
+}
+
+/* Theme paint-drop: the reveal is the clip-path animation from theme.js,
+   so the default view-transition cross-fade is disabled */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 /* Shared floating tooltip — used by the progress-bar break segment and event
    dots. (Originally the heatmap's tooltip class; kept here as a shared utility
    after the heatmap was removed.) */

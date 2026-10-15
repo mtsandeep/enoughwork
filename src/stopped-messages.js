@@ -1,0 +1,36 @@
+// End-of-day messages shown while the timer is stopped for the day.
+// One per day from the date, stable across restarts, cycling monthly.
+// Edit freely — keep it tasteful, keep it kind.
+
+export const STOPPED_MESSAGES = [
+  "Done for today. The couch awaits.",
+  "That power button won't press itself.",
+  "Almost everything works again if you unplug it for a while. Including you.",
+  "Enough work detected. Operator dismissed.",
+  "Save your work. Then save yourself.",
+  "You've done enough. Tomorrow-you has it covered.",
+  "Nature does not hurry, yet everything is accomplished.",
+  "The shutdown button is right there. It knows.",
+  "Clock's out. The spreadsheet will miss you. It'll cope.",
+  "Take rest; a field that has rested gives a bountiful crop.",
+  "Enough. The kettle misses you.",
+  "Your PC deserves to sleep too.",
+  "This timer has decided you're done. It's rarely wrong.",
+  "The time to relax is when you don't have time for it.",
+  "The plants would like a word.",
+  "Sleep mode isn't just for laptops.",
+  "Nothing left to optimize. Go home.",
+  "Rest is not idleness.",
+  "Good work. Now go be a person.",
+  "The day is closed for maintenance.",
+  "No is a complete sentence.",
+  "Stopped — the rest of today is yours.",
+  "That's a wrap. The credits are rolling.",
+  "Your chair called. It needs a break from you too.",
+  "It is not enough to be busy. The question is: what are we busy about?",
+  "Enough. Your future self says thanks.",
+  "You've reached the end of the menu. There is no dessert.",
+  "Work has been safely returned to the work drawer.",
+  "Enough work. The moon is taking over from here.",
+  "Timer says no. Timer is wise.",
+];

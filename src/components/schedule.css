@@ -200,9 +200,18 @@
   position: absolute;
   inset: 0;
   background: var(--bg);
-  z-index: 100;
+  z-index: 101; /* above the events page (z-index 100, later in the DOM) */
   display: flex;
   flex-direction: column;
+}
+
+/* The panel bg appears instantly (nothing flashes through from underneath);
+   the form content rises in, header first */
+.event-add-panel > * {
+  animation: page-rise 0.25s ease-out both;
+}
+.event-add-panel > *:nth-child(2) {
+  animation-delay: 0.04s;
 }
 .event-add-panel[hidden] {
   display: none;

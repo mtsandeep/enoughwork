@@ -118,6 +118,21 @@
 .theme-toggle {
   left: 16px;
   top: 10px;
+  width: 34px;
+  height: 34px;
+}
+
+/* Sun and moon stacked; the flip starts with the paint drop and lands as
+   the blob finishes covering the screen */
+.theme-toggle .theme-icon-light,
+.theme-toggle .theme-icon-dark {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+.theme-toggle .theme-icon-dark {
+  opacity: 0;
 }
 
 /* ===== Events List Icon (next to megaphone) ===== */

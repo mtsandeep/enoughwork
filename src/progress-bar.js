@@ -29,12 +29,22 @@ const EVENT_DOT_GAP = -4;
 let eventPopoverId = null; // id of event shown in the popover
 let eventPopoverTick = null; // live-update interval for the popover's meta text
 let dotResizeRaf = 0;
+let markerSig = ""; // last-rendered fingerprint; skips unchanged passes
 
 export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
   const dotsHost = document.getElementById("event-dots");
 
   const events = state.current.events || [];
   const now = Math.floor(Date.now() / 1000);
+
+  // Skip when nothing the markers depend on changed — avoids a forced layout
+  // (clientWidth) per second; the minute bucket covers clock drift.
+  const sig = [
+    limit_secs, Math.floor(now / 60), events.length,
+    events.map(e => `${e.id}:${+e.triggered}:${e.miss_reason || ""}:${e.snoozed_until || 0}:${e.elapsed_at_trigger || 0}`).join(","),
+  ].join("|");
+  if (sig === markerSig) return;
+  markerSig = sig;
 
   // Index existing dots by event id so we can update them in place rather
   // than recreating them every tick. Rebuilding each tick would destroy the
@@ -228,9 +238,8 @@ function formatEventLabel(ev) {
   return `${ev.triggered ? "✓ " : ""}${ev.title || "Reminder"} — ${clock}`;
 }
 
-// Point the tooltip's arrow at the hovered target: the shift() middleware
-// slides wide tooltips sideways to stay inside the window, so the arrow can't
-// just sit at the tooltip's center. Sets the CSS var the ::after arrow uses.
+// Point the arrow at the target — shift() slides wide tooltips sideways,
+// so the tooltip's center no longer lines up with it.
 function pointTooltipArrow(tooltip, target, x) {
   const r = target.getBoundingClientRect();
   const ax = r.left + r.width / 2 - x;
@@ -262,10 +271,9 @@ if (progressSvg && breakTooltip) {
   });
 }
 
-// Generic floating tooltip: any element carrying data-tooltip shows this on
-// hover, positioned via floating-ui (same look as the progress-bar tooltips).
-// While hovered, it re-reads data-tooltip every second so live values (e.g.
-// the snooze bar tally) keep ticking instead of freezing at hover time.
+// Generic floating tooltip for any [data-tooltip] element, positioned via
+// floating-ui. Re-reads data-tooltip every second while hovered so live
+// values keep ticking.
 const uiTooltip = document.getElementById("ui-tooltip");
 let uiTooltipTarget = null;
 if (uiTooltip) {
