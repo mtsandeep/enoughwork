@@ -176,7 +176,7 @@
   font-weight: 600;
   letter-spacing: 1.5px;
   text-transform: lowercase;
-  color: var(--muted);
+  color: var(--text);
 }
 
 .off-clock-time {
@@ -224,23 +224,8 @@
   color: var(--text);
 }
 
-/* ===== Snooze Bar ===== */
-.snooze-bar {
-  width: 100%;
-  max-width: 400px;
-}
-
-.snooze-progress-track {
-  width: 100%;
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.snooze-progress-fill {
-  height: 100%;
-  background: var(--amber);
-  border-radius: 3px;
-  transition: width 1s linear;
+/* Alarm-clock icon inline with the snoozed status text */
+.status-snooze-icon {
+  vertical-align: -2px;
+  margin-right: 5px;
 }

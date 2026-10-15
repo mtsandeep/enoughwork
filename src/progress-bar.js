@@ -147,27 +147,28 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
   // side-by-side so close events stay individually clickable.
   if (dotsHost) positionEventDots(dotsHost, dots);
 
-  // Overflow badges
+  // Overflow badges — plain "+N" flanking the bar; hover shows the event
+  // list via the shared floating tooltip (newline-separated lines).
   const leftBadge = $("#event-overflow-left");
   const inactiveBadge = $("#event-overflow-inactive");
   const rightBadge = $("#event-overflow-right");
   if (inactiveCount > 0) {
     inactiveBadge.textContent = `+${inactiveCount}`;
-    inactiveBadge.title = "Missed while system not active\n" + inactiveTitles.join("\n");
+    inactiveBadge.dataset.tooltip = ['<span class="tt-head">Missed while system not active</span>', ...inactiveTitles].join("\n");
     inactiveBadge.hidden = false;
   } else {
     inactiveBadge.hidden = true;
   }
   if (leftCount > 0) {
     leftBadge.textContent = `+${leftCount}`;
-    leftBadge.title = leftTitles.join("\n");
+    leftBadge.dataset.tooltip = leftTitles.join("\n");
     leftBadge.hidden = false;
   } else {
     leftBadge.hidden = true;
   }
   if (rightCount > 0) {
     rightBadge.textContent = `+${rightCount}`;
-    rightBadge.title = rightTitles.join("\n");
+    rightBadge.dataset.tooltip = rightTitles.join("\n");
     rightBadge.hidden = false;
   } else {
     rightBadge.hidden = true;
@@ -209,12 +210,13 @@ function positionEventDots(host, dots) {
   }
 }
 
+// Badge tooltip line — clock first, then the title in a softer style
 function formatEventTitle(ev) {
-  if (ev.event_type === "break") {
-    const m = Math.round(ev.duration_secs / 60);
-    return `Break (${m}m) ${formatClock(ev.trigger_at)}`;
-  }
-  return `${ev.title || "Reminder"} ${formatClock(ev.trigger_at)}`;
+  const clock = formatClock(ev.trigger_at);
+  const title = ev.event_type === "break"
+    ? `Break ${Math.round(ev.duration_secs / 60)}m`
+    : ev.title || "Reminder";
+  return `<span class="tt-clock">${clock}</span><span class="tt-sub">${title}</span>`;
 }
 
 function formatEventLabel(ev) {
@@ -224,6 +226,16 @@ function formatEventLabel(ev) {
     return `${ev.triggered ? "✓ " : ""}Break ${m}m — ${clock}`;
   }
   return `${ev.triggered ? "✓ " : ""}${ev.title || "Reminder"} — ${clock}`;
+}
+
+// Point the tooltip's arrow at the hovered target: the shift() middleware
+// slides wide tooltips sideways to stay inside the window, so the arrow can't
+// just sit at the tooltip's center. Sets the CSS var the ::after arrow uses.
+function pointTooltipArrow(tooltip, target, x) {
+  const r = target.getBoundingClientRect();
+  const ax = r.left + r.width / 2 - x;
+  const clamped = Math.max(14, Math.min(tooltip.offsetWidth - 14, ax));
+  tooltip.style.setProperty("--tt-arrow-x", `${clamped}px`);
 }
 
 // Progress bar break tooltip
@@ -241,6 +253,7 @@ if (progressSvg && breakTooltip) {
     });
     breakTooltip.style.left = `${x}px`;
     breakTooltip.style.top = `${y}px`;
+    pointTooltipArrow(breakTooltip, rect, x);
   });
   progressSvg.addEventListener("mouseout", (e) => {
     if (!progressSvg.contains(e.relatedTarget)) {
@@ -251,24 +264,41 @@ if (progressSvg && breakTooltip) {
 
 // Generic floating tooltip: any element carrying data-tooltip shows this on
 // hover, positioned via floating-ui (same look as the progress-bar tooltips).
+// While hovered, it re-reads data-tooltip every second so live values (e.g.
+// the snooze bar tally) keep ticking instead of freezing at hover time.
 const uiTooltip = document.getElementById("ui-tooltip");
+let uiTooltipTarget = null;
 if (uiTooltip) {
-  document.addEventListener("mouseover", async (e) => {
-    const target = e.target.closest("[data-tooltip]");
-    if (!target) return;
-    uiTooltip.innerHTML = `<div class="tt-time">${target.dataset.tooltip}</div>`;
-    uiTooltip.hidden = false;
-    const { x, y } = await computePosition(target, uiTooltip, {
+  const refreshUiTooltip = async () => {
+    if (!uiTooltipTarget || !uiTooltipTarget.isConnected) {
+      uiTooltipTarget = null;
+      uiTooltip.hidden = true;
+      return;
+    }
+    uiTooltip.innerHTML = uiTooltipTarget.dataset.tooltip
+      .split("\n")
+      .map((line) => `<div class="tt-time">${line}</div>`)
+      .join("");
+    const { x, y } = await computePosition(uiTooltipTarget, uiTooltip, {
       placement: "top",
       middleware: [floatingOffset(6), flip(), shift({ padding: 8 })],
     });
     uiTooltip.style.left = `${x}px`;
     uiTooltip.style.top = `${y}px`;
+    pointTooltipArrow(uiTooltip, uiTooltipTarget, x);
+  };
+  document.addEventListener("mouseover", (e) => {
+    const target = e.target.closest("[data-tooltip]");
+    if (!target) return;
+    uiTooltipTarget = target;
+    uiTooltip.hidden = false;
+    refreshUiTooltip();
   });
   document.addEventListener("mouseout", (e) => {
     const target = e.target.closest("[data-tooltip]");
     if (!target) return;
     if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+    uiTooltipTarget = null;
     uiTooltip.hidden = true;
   });
   // Hide the tooltip on mousedown so it doesn't linger after a click removes
@@ -277,8 +307,10 @@ if (uiTooltip) {
   // fires while the node still exists.
   document.addEventListener("mousedown", (e) => {
     if (!e.target.closest("[data-tooltip]")) return;
+    uiTooltipTarget = null;
     uiTooltip.hidden = true;
   });
+  setInterval(refreshUiTooltip, 1000);
 }
 
 // Event marker tooltip (dots live in #event-dots overlay)
@@ -297,6 +329,7 @@ if (eventDotsHost && eventTooltip) {
     });
     eventTooltip.style.left = `${x}px`;
     eventTooltip.style.top = `${y}px`;
+    pointTooltipArrow(eventTooltip, dot, x);
   });
   eventDotsHost.addEventListener("mouseout", (e) => {
     const dot = e.target.closest(".event-dot");

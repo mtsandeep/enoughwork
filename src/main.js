@@ -49,6 +49,9 @@ function formatSnoozeDur(secs) {
     : `${m}m ${String(s).padStart(2, "0")}s`;
 }
 
+// Alarm-clock icon shown before the snoozed status text
+const SNOOZE_ICON = `<svg class="status-snooze-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>`;
+
 async function refreshState() {
   try {
     state.current = await invoke("get_state");
@@ -92,8 +95,13 @@ function render() {
 
   const pct = Math.min((elapsed_secs / limit_secs) * 100, 100);
 
-  // Elapsed time - big
-  $("#elapsed").textContent = formatTime(elapsed_secs);
+  // Elapsed time - big. Includes time actually spent snoozed (display only;
+  // the progress bar below and all limit math stay on raw elapsed_secs).
+  const snoozeTotal = state.current.total_snooze_secs || 0;
+  const snoozeRemaining = status === "snoozed" && snooze_until
+    ? Math.max(0, snooze_until - Math.floor(Date.now() / 1000))
+    : 0;
+  $("#elapsed").textContent = formatTime(elapsed_secs + Math.max(0, snoozeTotal - snoozeRemaining));
 
   // Progress bar: simple fill (no break segments for now)
   const barEl = $("#progress-svg");
@@ -196,33 +204,10 @@ function render() {
     breakStatsEl.hidden = true;
   }
 
-  // Snooze bar — also stays up (full) after the snooze ends, so the day's
-  // snooze total keeps a home; hover shows it.
-  const snoozeBar = $("#snooze-bar");
-  if (status === "snoozed" && snooze_until) {
-    const now = Date.now() / 1000;
-    const remaining = Math.max(0, Math.ceil(snooze_until - now));
-    const total = state.current.total_snooze_secs || 0;
-    const elapsed = total - remaining;
-    const pct2 = total > 0 ? Math.min((elapsed / total) * 100, 100) : 0;
-
-    snoozeBar.hidden = false;
-    snoozeBar.dataset.tooltip = `Snoozed ${formatSnoozeDur(elapsed)} of ${formatSnoozeDur(total)} today`;
-    $("#snooze-progress").style.width = pct2 + "%";
-
-    // Show snooze button during snooze to extend
-    snoozeCtl.setHidden(false);
-  } else if ((state.current.total_snooze_secs || 0) >= 60) {
-    snoozeBar.hidden = false;
-    snoozeBar.dataset.tooltip = `Snoozed ${formatSnoozeDur(state.current.total_snooze_secs)} today`;
-    $("#snooze-progress").style.width = "100%";
-  } else {
-    snoozeBar.hidden = true;
-  }
-
   // Status
   const statusEl = $("#status");
   statusEl.className = "status-text";
+  delete statusEl.dataset.tooltip;
   if (status === "active") {
     statusEl.textContent = "Active";
     statusEl.classList.add("status-active");
@@ -244,8 +229,11 @@ function render() {
     } else {
       timeStr = `${rs}s`;
     }
-    statusEl.textContent = `Snoozed (${timeStr} left)`;
+    statusEl.innerHTML = `${SNOOZE_ICON}Snoozed (${timeStr} left)`;
     statusEl.classList.add("status-snoozed");
+    const snoozeTotal = state.current.total_snooze_secs || 0;
+    const snoozedSoFar = Math.max(0, snoozeTotal - remainingSecs);
+    statusEl.dataset.tooltip = `Snoozed ${formatSnoozeDur(snoozedSoFar)} of ${formatSnoozeDur(snoozeTotal)} today`;
   } else if (status === "limit_reached") {
     statusEl.textContent = "Limit reached";
     statusEl.classList.add("status-stopped");

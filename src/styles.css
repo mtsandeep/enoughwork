@@ -118,7 +118,7 @@ body {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
+  left: var(--tt-arrow-x, 50%);
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-top-color: #262626;
@@ -126,6 +126,22 @@ body {
 
 .heatmap-tooltip .tt-time {
   font-weight: 600;
+}
+
+/* Badge list lines: clock column + softer title */
+.heatmap-tooltip .tt-clock {
+  display: inline-block;
+  min-width: 48px;
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.heatmap-tooltip .tt-sub {
+  font-weight: 400;
+  color: #a0a0b8;
+}
+.heatmap-tooltip .tt-head {
+  display: block;
+  margin-bottom: 5px;
 }
 
 /* Dark: lift the tooltip well above the page background so it reads as a

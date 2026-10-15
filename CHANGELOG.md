@@ -4,6 +4,15 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Snoozed status line now leads with an alarm-clock icon and the live countdown; hovering it shows time snoozed so far vs the day's total ("Snoozed 8m 30s of 25m today")
+- Event overflow "+N" badges are plain text hanging outside the bar's edges, so the progress bar always keeps its full width; hovering shows a floating list of the missed events with clock-first lines
+
+### Changed
+- The separate snooze bar is gone — the main timer now includes time actually spent snoozed, so the snooze total stays visible in the big number (progress bar and limit math unchanged)
+- Off-the-clock overlay reads "MORE WORK / off the clock?", both lines in the same text color
+- Floating tooltips keep their text live while hovered, and their arrow keeps pointing at the target when long text shifts the tooltip sideways
+
 ## [0.2.10] - 2026-10-12
 
 ### Added
