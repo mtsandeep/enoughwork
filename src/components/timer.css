@@ -170,6 +170,25 @@
   background: rgba(0, 0, 0, 0.5);
 }
 
+/* Voluntary pause — pause icon and a gray rule */
+.status-done.paused {
+  border-left-color: var(--border-strong);
+}
+
+.status-done.paused::before {
+  content: "";
+  display: inline-block;
+  /* 18px box: the pause glyph is optically narrower than the power icon,
+     so its box is slightly larger for equal visual weight */
+  width: 18px;
+  height: 18px;
+  margin-right: 7px;
+  vertical-align: -3px;
+  background-color: var(--muted);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'><rect x='6' y='4' width='4' height='16' rx='1.5'/><rect x='14' y='4' width='4' height='16' rx='1.5'/></svg>") no-repeat center / contain;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'><rect x='6' y='4' width='4' height='16' rx='1.5'/><rect x='14' y='4' width='4' height='16' rx='1.5'/></svg>") no-repeat center / contain;
+}
+
 /* ===== Off-the-clock: over-work overlay + topbar tally ===== */
 
 /* Below the topbar icons (z-index 10) so they stay clickable over the scrim */

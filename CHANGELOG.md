@@ -4,6 +4,12 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Timer no longer appears to gain a second after the limit overlay — the window syncs the moment any overlay fires, showing the final value before the overlay covers the screen
+
+### Changed
+- End-of-day note shows only when the day ran to its limit; pausing early shows "Paused — auto-starts tomorrow" in the same card, with a pause icon and gray accents
+
 ## [0.2.11] - 2026-10-15
 
 ### Added

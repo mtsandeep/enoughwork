@@ -293,8 +293,15 @@ function render() {
     statusText = "Limit reached";
     statusEl.classList.add("status-stopped");
   } else if (status === "stopped") {
-    statusText = stoppedMessageFor(state.current.date);
-    statusEl.classList.add("status-done");
+    if (elapsed_secs >= limit_secs) {
+      // The day ran its course — the end-of-day note
+      statusText = stoppedMessageFor(state.current.date);
+      statusEl.classList.add("status-done");
+    } else {
+      // Voluntary pause before the limit — same card, plain message, no icon
+      statusText = "Paused — auto-starts tomorrow";
+      statusEl.classList.add("status-done", "paused");
+    }
   }
   if (statusHtml !== null) {
     if (statusEl.innerHTML !== statusHtml) statusEl.innerHTML = statusHtml;
