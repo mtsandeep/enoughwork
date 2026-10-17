@@ -1,6 +1,7 @@
 import { state, invoke, listen, emit, emitTo, WebviewWindow } from "./state.js";
 import { render } from "./main.js";
 import { getMainWorkArea, bottomRightPosition, getMonitors } from "./window-utils.js";
+import { openTaskPopout } from "./task-timer.js";
 
 function allInterruptWindows() {
   const list = [];
@@ -528,6 +529,26 @@ async function closeEventNotify() {
   showingReminderId = null;
 }
 
+/**
+ * Creating a WebviewWindow on Windows can re-activate the hidden main window
+ * (owner activation quirk). Wrap notification opens with this: if the main
+ * window was hidden before, it goes back to hidden afterward.
+ */
+async function withMainKeptHidden(open) {
+  const main = window.__TAURI__.window.getCurrentWindow();
+  let wasVisible = true;
+  try { wasVisible = await main.isVisible(); } catch {}
+  await open();
+  if (!wasVisible) {
+    // The unhide can land slightly after creation resolves — re-check.
+    setTimeout(async () => {
+      try {
+        if (await main.isVisible()) await main.hide();
+      } catch {}
+    }, 250);
+  }
+}
+
 // Rust emits this when an event's time arrives (reminders: session usable —
 // fires even if the timer is stopped; breaks: only while time is counting;
 // tasks: start notification, sub-timer begins when the user clicks Start)
@@ -544,19 +565,23 @@ listen("event-triggered", async (event) => {
     render();
   } else if (ev.event_type === "task") {
     // Start notification — the sub-timer itself lives in the main window.
-    if (ev.overlay_type === "mini") {
-      await openEventNotifyMini(ev, "task-start");
-    } else {
-      await openEventNotifyFullscreen(ev, "task-start");
-    }
+    await withMainKeptHidden(async () => {
+      if (ev.overlay_type === "mini") {
+        await openEventNotifyMini(ev, "task-start");
+      } else {
+        await openEventNotifyFullscreen(ev, "task-start");
+      }
+    });
     render();
   } else {
     showingReminderId = ev.id;
-    if (ev.overlay_type === "mini") {
-      await openEventNotifyMini(ev);
-    } else {
-      await openEventNotifyFullscreen(ev);
-    }
+    await withMainKeptHidden(async () => {
+      if (ev.overlay_type === "mini") {
+        await openEventNotifyMini(ev);
+      } else {
+        await openEventNotifyFullscreen(ev);
+      }
+    });
     render();
   }
 });
@@ -565,7 +590,13 @@ listen("event-triggered", async (event) => {
 listen("task-start", async (event) => {
   const { id } = event.payload;
   await closeEventNotify();
-  state.current = await invoke("start_task", { id, showMain: true });
+  state.current = await invoke("start_task", { id, showMain: false });
+  // With the main window hidden (tray), surface the timer as the floating
+  // popout instead of raising the main window; if it's already visible the
+  // strip is enough.
+  let visible = true;
+  try { visible = await window.__TAURI__.window.getCurrentWindow().isVisible(); } catch {}
+  if (!visible) await openTaskPopout(id);
   render();
 });
 
@@ -589,11 +620,13 @@ listen("task-ended", async (event) => {
   await prepareInterruptReplace();
   // The done card's time line shows the end time, not the schedule time.
   const doneEv = { ...ev, trigger_at: ev.task_ends_at || ev.trigger_at };
-  if (ev.overlay_type === "mini") {
-    await openEventNotifyMini(doneEv, "task-done");
-  } else {
-    await openEventNotifyFullscreen(doneEv, "task-done");
-  }
+  await withMainKeptHidden(async () => {
+    if (ev.overlay_type === "mini") {
+      await openEventNotifyMini(doneEv, "task-done");
+    } else {
+      await openEventNotifyFullscreen(doneEv, "task-done");
+    }
+  });
   render();
 });
 

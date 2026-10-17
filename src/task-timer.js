@@ -4,7 +4,7 @@
 // Rust task commands and re-render via main.js.
 
 import { $, state, invoke, listen, emit, WebviewWindow } from "./state.js";
-import { render } from "./main.js";
+import { render, refreshState, wakePoll } from "./main.js";
 import { getMonitors } from "./window-utils.js";
 
 function nowSecs() {
@@ -314,7 +314,7 @@ export async function openTaskPopout(id) {
   const now = nowSecs();
   const url =
     `src/windows/task-timer.html?id=${id}&title=${encodeURIComponent(ev.title || "Task")}` +
-    `&remaining=${taskRemainingSecs(ev, now)}&total=${ev.duration_secs || 0}&state=${ev.task_state}`;
+    `&remaining=${taskRemainingSecs(ev, now)}&total=${ev.duration_secs || 0}&state=${ev.task_state}&t=${now}`;
   popoutTaskId = id;
   closeTaskPage();
   const savedPos = await readVisibleSavedPos();
@@ -361,6 +361,17 @@ export async function openTaskPopout(id) {
     console.error("Task popout failed:", e);
     popoutWin = null;
     popoutTaskId = null;
+  }
+  // The hidden-window poll sleeps in 5s cycles — cut it short so the popout
+  // gets 1s ticks right away, and re-broadcast during the webview's startup
+  // so it locks on even if the creation-time tick fired before its listener
+  // registered.
+  refreshState();
+  wakePoll();
+  for (let i = 1; i <= 8; i++) {
+    setTimeout(() => {
+      if (popoutTaskId === id) emitTaskTick(state.current);
+    }, i * 500);
   }
   render();
 }

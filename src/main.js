@@ -582,8 +582,9 @@ $("#dbg-1min-event").addEventListener("click", async () => {
 });
 
 // Poll: 1s while visible, 5s hidden to tray; focus wakes the sleep so a
-// reopened window resumes its 1s cadence immediately.
-let wakePoll = () => {};
+// reopened window resumes its 1s cadence immediately. Opening the task
+// popout wakes it too — the popout needs 1s ticks even while hidden.
+export let wakePoll = () => {};
 function sleepPoll(ms) {
   return new Promise((resolve) => {
     const t = setTimeout(() => { wakePoll = () => {}; resolve(); }, ms);

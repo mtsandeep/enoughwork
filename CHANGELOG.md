@@ -9,6 +9,7 @@ All notable changes to EnoughWork will be documented in this file.
   - Create tasks from the quick-add panel (or "Add Task" on the events page): title, a −/+ duration stepper, start time with a one-click "Now" button, fullscreen/mini notification choice, and repeat weekdays. A task scheduled for "now" starts immediately; a scheduled one shows a start notification (Start / Dismiss, snooze on fullscreen) at its time and stays startable from the events list
   - A compact strip above the main timer shows the live task — title, elapsed time counting up from 0, and pause/restart/stop/pop-out controls; click it to expand a full-window view with a progress ring and the same controls. When several tasks run at once, a switcher floats down the left side of the expanded view: uniform chips with title and elapsed time (the time never truncates; chips expand on hover to reveal the full title), in a stable order that never reorders on selection — a stopped or finished task drops out after a few seconds
   - Pop out any task to a small always-on-top floating window: a see-through card at rest that follows the app theme, with the controls in a drawer that slides up over the progress bar on hover. The card shows the task's total under the timer ("of 1:00"), with the state appended when paused or stopped
+  - Starting a task from its notification while the app is in the tray brings up the floating popout window instead of raising the main window; the floating timer shows the correct time the moment it opens and keeps ticking on its own, even before the app's updates reach it
   - When a task's time is up, a completion notification (per its fullscreen/mini setting) shows when it ended with Restart / Done; stopping a task manually freezes the strip where it ended for a few seconds with Restart available before it hides. On completion the "Done ✓" mark turns green while the timer digits and ring simply fill — nothing recolors
   - Compact duration labels (task chips, events list) count whole minutes — "1m" appears only after a full minute has elapsed, never rounded up
   - Task timers freeze across lock/sleep like breaks, survive app restarts and the day rollover, and editing a running task's duration keeps its elapsed progress
@@ -16,6 +17,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ### Fixed
 - Timer no longer appears to gain a second after the limit overlay — the window syncs the moment any overlay fires, showing the final value before the overlay covers the screen
+- Clicking the tray icon (or its Show menu, or launching the app again) now restores a minimized window — previously a minimized window stayed in the taskbar instead of coming up
+- Notification popups (reminders, task start/done cards) no longer drag the hidden main window back on screen on Windows — a quirk where creating a popup window can re-activate its owner window
 
 ### Changed
 - End-of-day note shows only when the day ran to its limit; pausing early shows "Paused — auto-starts tomorrow" in the same card, with a pause icon and gray accents

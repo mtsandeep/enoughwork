@@ -13,6 +13,7 @@ listen("app-theme", (event) => {
 
 const params = new URLSearchParams(window.location.search);
 const taskId = parseInt(params.get("id")) || 0;
+const createdAt = parseInt(params.get("t")) || 0; // unix secs when the popout was opened
 
 const titleEl = document.getElementById("task-title");
 const timeEl = document.getElementById("task-time");
@@ -77,6 +78,8 @@ function render({ id, title, state, remaining, total }) {
     fillEl.style.width = `${pct}%`;
   }
 
+  lastTick = { remaining, total, state, at: Date.now() };
+
   icPause.style.display = paused ? "none" : "";
   icPlay.style.display = paused ? "" : "none";
   toggleBtn.title = paused ? "Resume" : "Pause";
@@ -85,7 +88,8 @@ function render({ id, title, state, remaining, total }) {
   document.getElementById("btn-stop").disabled = !live;
 }
 
-// Initial paint from URL params so the window is correct before the first tick.
+// Initial paint from URL params — compensated for webview load delay, so a
+// slowly-loading window still opens showing the correct elapsed time.
 const init = {
   id: taskId,
   title: null,
@@ -93,7 +97,27 @@ const init = {
   remaining: parseInt(params.get("remaining")) || 0,
   total: parseInt(params.get("total")) || 0,
 };
+let lastTick = null; // last authoritative/local tick state
+if (createdAt && init.remaining > 0 && init.state === "running") {
+  const lag = Math.max(0, Math.floor(Date.now() / 1000) - createdAt);
+  init.remaining = Math.max(0, init.remaining - lag);
+}
 render(init);
+
+// Self-advance between ticks: the display never stalls while a tick is in
+// flight — real ticks (authoritative) just resync the drift.
+setInterval(() => {
+  if (!lastTick || lastTick.state !== "running") return;
+  const drift = Math.floor((Date.now() - lastTick.at) / 1000);
+  if (drift <= 0) return;
+  render({
+    id: taskId,
+    title: null,
+    state: lastTick.state,
+    remaining: Math.max(0, lastTick.remaining - drift),
+    total: lastTick.total,
+  });
+}, 1000);
 
 listen("task-tick", (event) => render(event.payload));
 
