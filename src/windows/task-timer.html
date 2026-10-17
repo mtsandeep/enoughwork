@@ -88,9 +88,6 @@
     .task-popout-time.has-hours {
       font-size: 30px;
     }
-    .task-popout-time.done {
-      color: #0d9488;
-    }
     .task-popout-time.paused {
       color: #999;
     }
@@ -109,9 +106,6 @@
       background: #f59e0b;
       transition: width 0.4s ease;
     }
-    .task-popout.fill-done .task-popout-fill {
-      background: #0d9488;
-    }
     .task-popout-state {
       font-size: 12px;
       font-weight: 600;
@@ -120,6 +114,10 @@
       line-height: 14px;
       height: 14px;
       text-align: center;
+    }
+    /* Done: green lives on the checkmark line, not the timer digits */
+    .task-popout-state.done {
+      color: #15803d;
     }
     /* Nudges up out of the way as the drawer slides in — same easing so the
        two move together */
@@ -201,12 +199,12 @@
     html[data-theme="dark"] .task-popout-bar {
       background: rgba(255, 255, 255, 0.1);
     }
-    html[data-theme="dark"] .task-popout-time.done {
-      color: #34d8c4;
-    }
     html[data-theme="dark"] .task-popout-time.paused,
     html[data-theme="dark"] .task-popout-state {
       color: #a6a6a6;
+    }
+    html[data-theme="dark"] .task-popout-state.done {
+      color: #22c55e;
     }
     html[data-theme="dark"] .task-popout-drawer {
       background: #202020;

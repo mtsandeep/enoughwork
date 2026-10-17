@@ -39,25 +39,44 @@ function activeTasks(st) {
 // the strip for a few seconds (frozen time + Restart) before it disappears;
 // completed tasks hide immediately (the completion card owns Done/Restart).
 let stripLinger = null; // { id, untilSecs }
+const tabLinger = new Map(); // id -> untilSecs (stopped/done chips)
 let lingerTimer = null;
 const prevTaskStates = new Map(); // id -> task_state at last render
 
 function updateLinger(tasks, now) {
   for (const t of tasks) {
     const prev = prevTaskStates.get(t.id);
-    if (prev && (prev === "running" || prev === "paused") && t.task_state === "stopped") {
-      stripLinger = { id: t.id, until: now + 5 };
-      if (lingerTimer) clearTimeout(lingerTimer);
-      lingerTimer = setTimeout(render, 5000);
+    if (prev && (prev === "running" || prev === "paused")) {
+      if (t.task_state === "stopped") {
+        stripLinger = { id: t.id, until: now + 5 };
+        tabLinger.set(t.id, now + 5);
+      } else if (t.task_state === "done") {
+        tabLinger.set(t.id, now + 5);
+      }
     }
     prevTaskStates.set(t.id, t.task_state);
   }
-  // Expired, or the task moved on (restarted/deleted) — drop the linger.
+  // Expired, or the task moved on (restarted/deleted) — drop the lingers.
   if (stripLinger) {
     const t = tasks.find((e) => e.id === stripLinger.id);
     if (now >= stripLinger.until || !t || t.task_state !== "stopped") {
       stripLinger = null;
     }
+  }
+  for (const [id, until] of tabLinger) {
+    const t = tasks.find((e) => e.id === id);
+    if (now >= until || !t || (t.task_state !== "stopped" && t.task_state !== "done")) {
+      tabLinger.delete(id);
+    }
+  }
+  // Re-render when the earliest pending linger expires.
+  let earliest = stripLinger ? stripLinger.until : Infinity;
+  for (const until of tabLinger.values()) {
+    if (until < earliest) earliest = until;
+  }
+  if (earliest !== Infinity) {
+    if (lingerTimer) clearTimeout(lingerTimer);
+    lingerTimer = setTimeout(render, Math.max(0, earliest - now) * 1000 + 50);
   }
 }
 
@@ -135,7 +154,8 @@ function formatClockTime(secs) {
 }
 
 function formatDurShort(secs) {
-  const m = Math.round(secs / 60);
+  // Floor — "1m" only once a full minute has actually elapsed.
+  const m = Math.floor(secs / 60);
   const h = Math.floor(m / 60);
   return h > 0 ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
 }
@@ -144,12 +164,14 @@ function renderPage(st) {
   const page = $("#task-page");
   setHidden(page, false);
   const tasks = tasksOf(st);
-  const actives = activeTasks(st);
-  const sel =
-    tasks.find((e) => e.id === pageTaskId && e.task_state !== "dismissed") ||
-    actives[0] ||
-    tasksOf(st).find((e) => e.task_state === "done") ||
-    null;
+  // Tab list: live tasks plus stopped/done ones still inside their linger.
+  const tabbable = tasks.filter(
+    (e) =>
+      e.task_state === "running" ||
+      e.task_state === "paused" ||
+      (tabLinger.has(e.id) && (e.task_state === "stopped" || e.task_state === "done"))
+  );
+  const sel = tabbable.find((e) => e.id === pageTaskId) || tabbable[0] || null;
   if (!sel) {
     closeTaskPage();
     return;
@@ -162,26 +184,32 @@ function renderPage(st) {
   const isDone = sel.task_state === "done";
   const isStopped = sel.task_state === "stopped";
   const live = sel.task_state === "running" || sel.task_state === "paused";
+  // Armed: scheduled or notified but not started yet — renders at 0 elapsed.
+  const armed = !live && !isDone && !isStopped;
 
   setText($("#task-page-title"), sel.title || "Task");
   const timeEl = $("#task-page-time");
-  // Elapsed counting up from 0; done shows the full block, stopped freezes
-  // where it ended. Clamped so a duration edit can never render negative.
-  setText(timeEl, formatClockTime(Math.max(0, Math.min(total, total - remaining))));
+  // Elapsed counting up from 0; armed shows 0 (not started), done the full
+  // block, stopped frozen where it ended. Clamped against duration edits.
+  const elapsed = armed ? 0 : Math.max(0, Math.min(total, total - remaining));
+  setText(timeEl, formatClockTime(elapsed));
   timeEl.classList.toggle("has-hours", total >= 3600);
   setText($("#task-page-sub"), `of ${formatClockTime(total)}`);
 
   const stateEl = $("#task-page-state");
   const stateText =
-    sel.task_state === "paused" ? "Paused"
-    : isDone ? "Done ✓"
-    : isStopped ? "Stopped"
-    : "";
+    armed
+      ? sel.trigger_at > now
+        ? `Starts in ${formatDurShort(sel.trigger_at - now)}`
+        : "Waiting to start"
+      : sel.task_state === "paused" ? "Paused"
+      : isDone ? "Done ✓"
+      : isStopped ? "Stopped"
+      : "";
   setText(stateEl, stateText);
 
   // Ring: fills up as the task progresses — same direction as the popout bar.
   const ringFill = $("#task-ring-fill");
-  const elapsed = Math.max(0, Math.min(total, total - remaining));
   const frac = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 0;
   ringFill.style.strokeDashoffset = CIRCUMFERENCE * (1 - frac);
   $("#task-page-body").classList.toggle("task-done", isDone);
@@ -195,26 +223,28 @@ function renderPage(st) {
   setText($("#task-page-toggle-label"), paused ? "Resume" : "Pause");
   toggleBtn.disabled = !live;
   $("#task-page-stop").disabled = !live;
-  $("#task-page-restart").disabled = !(live || isDone || isStopped);
+  // Restart works from any listed state (starts an armed task immediately).
+  $("#task-page-restart").disabled = false;
   // Pop Out works in every state — it just shows the frozen timer + Restart.
   $("#task-page-popout").disabled = false;
-  setHidden($("#task-page-dismiss"), !isDone);
 
-  // Tabs across live/finished tasks when more than one is in play.
+  // Tabs across the tabbable list, in creation order — the list never
+  // reorders on selection.
   const tabsEl = $("#task-tabs");
-  const others = tasksOf(st).filter((e) => e.task_state !== "dismissed" && e.id !== sel.id);
-  setHidden(tabsEl, others.length === 0);
-  if (others.length > 0) {
-    const wanted = [sel, ...others]
+  setHidden(tabsEl, tabbable.length <= 1);
+  if (tabbable.length > 1) {
+    const html = tabbable
       .map((e) => {
         const eTotal = e.duration_secs || 0;
-        const label = e.id === sel.id
-          ? (e.title || "Task")
-          : `${e.title || "Task"} · ${formatDurShort(Math.max(0, eTotal - taskRemainingSecs(e, now)))}`;
-        return `<button class="task-tab${e.id === sel.id ? " active" : ""}" data-id="${e.id}">${escapeHtml(label)}</button>`;
+        const time = formatDurShort(Math.max(0, eTotal - taskRemainingSecs(e, now)));
+        const title = escapeHtml(e.title || "Task");
+        return `<button class="task-tab${e.id === sel.id ? " active" : ""}" data-id="${e.id}">` +
+          `<span class="task-tab-title">${title}</span>` +
+          `<span class="task-tab-time">${time}</span>` +
+          `</button>`;
       })
       .join("");
-    if (tabsEl.innerHTML !== wanted) tabsEl.innerHTML = wanted;
+    if (tabsEl.innerHTML !== html) tabsEl.innerHTML = html;
     tabsEl.querySelectorAll(".task-tab").forEach((b) => {
       b.addEventListener("click", () => {
         pageTaskId = parseInt(b.dataset.id, 10);
@@ -387,10 +417,6 @@ $("#task-page-stop").addEventListener("click", () => {
 
 $("#task-page-popout").addEventListener("click", () => {
   if (pageTaskId != null) openTaskPopout(pageTaskId);
-});
-
-$("#task-page-dismiss").addEventListener("click", () => {
-  if (pageTaskId != null) runTaskCommand("dismiss_task", pageTaskId);
 });
 
 document.addEventListener("keydown", (e) => {

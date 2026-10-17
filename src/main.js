@@ -487,6 +487,15 @@ mainWindow.onCloseRequested(() => {
   applyPendingSettings();
 });
 
+// Sync the moment an overlay fires (limit/break/reminder) so the timer
+// shows its final value before the overlay window covers the screen —
+// otherwise the last pre-overlay frame reads a second behind and "moves"
+// when the user returns.
+listen("show-overlay", async () => {
+  forceRender = true;
+  await refreshState();
+});
+
 // Listen for overlay-close event
 listen("close-overlay", async () => {
   await closeAllOverlays();

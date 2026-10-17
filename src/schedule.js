@@ -553,9 +553,9 @@ function formatClockWithDay(unixSecs, nowSecs) {
   return sameDay ? clock : `${WEEKDAYS[d.getDay()]} ${clock}`;
 }
 
-// "45m" / "1h 05m" — compact duration label
+// "45m" / "1h 05m" — compact duration label (floored, never rounded up)
 function formatDurShort(secs) {
-  const m = Math.round(secs / 60);
+  const m = Math.floor(secs / 60);
   const h = Math.floor(m / 60);
   return h > 0 ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
 }

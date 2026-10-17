@@ -55,12 +55,20 @@ function render({ id, title, state, remaining, total }) {
   const timeText = formatClockTime(elapsed);
   if (timeEl.textContent !== timeText) timeEl.textContent = timeText;
   timeEl.classList.toggle("has-hours", total >= 3600);
-  timeEl.classList.toggle("done", done);
   timeEl.classList.toggle("paused", paused);
 
-  const stateText = done ? "Done ✓" : stopped ? "Stopped" : paused ? "Paused" : "";
+  // Sub-line: the task's total first, then the state; done replaces it with
+  // a green checkmark.
+  const ofTotal = `of ${formatClockTime(total)}`;
+  const stateText = done
+    ? "Done ✓"
+    : paused
+      ? `${ofTotal} · Paused`
+      : stopped
+        ? `${ofTotal} · Stopped`
+        : ofTotal;
   if (stateEl.textContent !== stateText) stateEl.textContent = stateText;
-  container.classList.toggle("fill-done", done);
+  stateEl.classList.toggle("done", done);
 
   // Whole-percent steps only — per-second width writes dirty layout.
   const pct = total > 0 ? Math.min(100, Math.round((elapsed / total) * 100)) : 0;
