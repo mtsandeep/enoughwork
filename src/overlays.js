@@ -403,9 +403,9 @@ listen("show-overlay", openOverlay);
 let eventNotifyWindows = [];
 let eventNotifyId = 0;
 
-function eventNotifyUrl(ev, mode) {
+function eventNotifyUrl(ev, mode, kind = "reminder") {
   const title = encodeURIComponent(ev.title || "Reminder");
-  return `src/windows/event-notify.html?id=${ev.id}&title=${title}&mode=${mode}&at=${ev.trigger_at}`;
+  return `src/windows/event-notify.html?id=${ev.id}&title=${title}&mode=${mode}&at=${ev.trigger_at}&kind=${kind}`;
 }
 
 /** Close whatever interrupt is up so the next one can take the screen. */
@@ -415,11 +415,14 @@ async function prepareInterruptReplace() {
     state.current = await invoke("resume_from_break");
     await closeBreakOverlay();
   }
-  // Unacknowledged reminder → silent miss
+  // Unacknowledged reminder → silent miss. A task start notification just
+  // closes — the task stays startable from the events list.
   if (showingReminderId != null) {
     const id = showingReminderId;
     showingReminderId = null;
     state.current = await invoke("mark_event_missed", { id, reason: "replaced" });
+  }
+  if (eventNotifyWindows.length > 0) {
     await closeEventNotify();
   }
   // Limit / notify / anim windows
@@ -441,9 +444,9 @@ async function prepareInterruptReplace() {
   }
 }
 
-async function openEventNotifyFullscreen(ev) {
+async function openEventNotifyFullscreen(ev, kind) {
   eventNotifyId++;
-  const url = eventNotifyUrl(ev, "fullscreen");
+  const url = eventNotifyUrl(ev, "fullscreen", kind);
   try {
     const monitors = await getMonitors();
     if (monitors && monitors.length > 1) {
@@ -481,7 +484,7 @@ async function openEventNotifyFullscreen(ev) {
   }
 }
 
-async function openEventNotifyMini(ev) {
+async function openEventNotifyMini(ev, kind) {
   const popupW = 320;
   const popupH = 200;
   const margin = 16;
@@ -499,8 +502,8 @@ async function openEventNotifyMini(ev) {
   } catch (_) {}
 
   const url = hasWorkArea
-    ? eventNotifyUrl(ev, "mini")
-    : eventNotifyUrl(ev, "mini") + "&selfpos=1";
+    ? eventNotifyUrl(ev, "mini", kind)
+    : eventNotifyUrl(ev, "mini", kind) + "&selfpos=1";
   const w = new WebviewWindow("event-notify-mini", {
     url,
     width: popupW,
@@ -526,7 +529,8 @@ async function closeEventNotify() {
 }
 
 // Rust emits this when an event's time arrives (reminders: session usable —
-// fires even if the timer is stopped; breaks: only while time is counting)
+// fires even if the timer is stopped; breaks: only while time is counting;
+// tasks: start notification, sub-timer begins when the user clicks Start)
 listen("event-triggered", async (event) => {
   const ev = event.payload;
   await prepareInterruptReplace();
@@ -538,6 +542,14 @@ listen("event-triggered", async (event) => {
       eventId: ev.id,
     });
     render();
+  } else if (ev.event_type === "task") {
+    // Start notification — the sub-timer itself lives in the main window.
+    if (ev.overlay_type === "mini") {
+      await openEventNotifyMini(ev, "task-start");
+    } else {
+      await openEventNotifyFullscreen(ev, "task-start");
+    }
+    render();
   } else {
     showingReminderId = ev.id;
     if (ev.overlay_type === "mini") {
@@ -547,6 +559,42 @@ listen("event-triggered", async (event) => {
     }
     render();
   }
+});
+
+// Task notification actions
+listen("task-start", async (event) => {
+  const { id } = event.payload;
+  await closeEventNotify();
+  state.current = await invoke("start_task", { id, showMain: true });
+  render();
+});
+
+listen("task-restart", async (event) => {
+  const { id } = event.payload;
+  await closeEventNotify();
+  state.current = await invoke("restart_task", { id });
+  render();
+});
+
+listen("task-dismiss", async (event) => {
+  const { id } = event.payload;
+  await closeEventNotify();
+  state.current = await invoke("dismiss_task", { id });
+  render();
+});
+
+// Rust emits this when a running task's duration elapses.
+listen("task-ended", async (event) => {
+  const ev = event.payload;
+  await prepareInterruptReplace();
+  // The done card's time line shows the end time, not the schedule time.
+  const doneEv = { ...ev, trigger_at: ev.task_ends_at || ev.trigger_at };
+  if (ev.overlay_type === "mini") {
+    await openEventNotifyMini(doneEv, "task-done");
+  } else {
+    await openEventNotifyFullscreen(doneEv, "task-done");
+  }
+  render();
 });
 
 // Reminder overlay actions

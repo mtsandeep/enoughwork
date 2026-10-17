@@ -340,7 +340,13 @@ pub fn create_event(
     } else {
         (trigger_at, false)
     };
-    state.events.push(ScheduledEvent {
+    // Tasks need a usable duration (at least a minute).
+    let duration_secs = if event_type == "task" {
+        duration_secs.max(60)
+    } else {
+        duration_secs
+    };
+    let mut new_ev = ScheduledEvent {
         id,
         event_type,
         title,
@@ -354,7 +360,23 @@ pub fn create_event(
         recurred_today: false,
         trigger_minute,
         miss_reason: None,
-    });
+        task_state: String::new(),
+        task_ends_at: None,
+        task_remaining_secs: None,
+    };
+    // A task scheduled for "now" starts its sub-timer immediately instead of
+    // firing a start notification.
+    if new_ev.event_type == "task" && !new_ev.triggered && effective_trigger_at <= chrono::Local::now().timestamp() {
+        let now_ts = chrono::Local::now().timestamp();
+        new_ev.task_state = "running".into();
+        new_ev.task_ends_at = Some(now_ts + new_ev.duration_secs as i64);
+        new_ev.triggered = true;
+        new_ev.recurred_today = true;
+        // Anchor for the progress-bar range — without it the event would read
+        // as "missed" (triggered with no elapsed anchor).
+        new_ev.elapsed_at_trigger = Some(state.elapsed_secs);
+    }
+    state.events.push(new_ev);
     state.clone()
 }
 
@@ -372,7 +394,10 @@ pub fn update_event(
     use chrono::{Datelike, Timelike};
     let app_data = app_handle.state::<AppData>();
     let mut state = app_data.state.lock().unwrap();
+    let elapsed_now = state.elapsed_secs;
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        let is_task = event_type == "task";
+        let prev_duration = ev.duration_secs;
         ev.event_type = event_type;
         ev.title = title;
         ev.duration_secs = duration_secs;
@@ -402,6 +427,45 @@ pub fn update_event(
         ev.snoozed_until = None;
         ev.recurred_today = false;
         ev.triggered = effective_triggered;
+        // Editing resets task runtime state, except a live sub-timer (an
+        // edit while running only tweaks label/time — Restart applies any
+        // new duration). When the duration itself changed, re-anchor the
+        // remaining time against the new total, preserving elapsed progress:
+        // a shrink below the elapsed time leaves 0 remaining (completes).
+        if !is_task || !crate::state::task_state_is_live(ev) {
+            ev.task_state = String::new();
+            ev.task_ends_at = None;
+            ev.task_remaining_secs = None;
+        } else if prev_duration != duration_secs {
+            let now_ts = chrono::Local::now().timestamp();
+            let remaining = if ev.task_state == "running" {
+                ev.task_ends_at.map(|e| (e - now_ts).max(0) as u64).unwrap_or(0)
+            } else {
+                ev.task_remaining_secs.unwrap_or(0)
+            };
+            let elapsed = prev_duration.saturating_sub(remaining);
+            let new_remaining = duration_secs.saturating_sub(elapsed);
+            if ev.task_state == "running" {
+                ev.task_ends_at = Some(now_ts + new_remaining as i64);
+            } else {
+                ev.task_remaining_secs = Some(new_remaining);
+            }
+        }
+        // A task edited to start "now" begins immediately, same as creation —
+        // no start notification.
+        if is_task
+            && ev.task_state.is_empty()
+            && !ev.triggered
+            && effective_trigger_at <= chrono::Local::now().timestamp()
+        {
+            let now_ts = chrono::Local::now().timestamp();
+            ev.task_state = "running".into();
+            ev.task_ends_at = Some(now_ts + ev.duration_secs as i64);
+            ev.task_remaining_secs = None;
+            ev.triggered = true;
+            ev.recurred_today = true;
+            ev.elapsed_at_trigger = Some(elapsed_now);
+        }
     }
     state.clone()
 }
@@ -528,6 +592,134 @@ pub fn skip_event(id: u32, app_handle: tauri::AppHandle) -> TimerState {
         ev.recurred_today = true;
         ev.snoozed_until = None;
         ev.miss_reason = Some("skipped".into());
+    }
+    state.clone()
+}
+
+// ===== Task sub-timers =====
+// A task event's sub-timer runs alongside the main timer, independent of
+// tracking status: it counts down whenever the session is usable (never on a
+// locked/asleep machine — the tick loop freezes it like a break).
+
+/// Start a task's sub-timer — from the start notification, the events list,
+/// or creation with "start now". No-op for tasks already live or finished.
+/// `show_main` brings the main window up (used by the notify window's Start).
+#[tauri::command]
+pub fn start_task(id: u32, show_main: Option<bool>, app_handle: tauri::AppHandle) -> TimerState {
+    if show_main.unwrap_or(false) {
+        if let Some(w) = app_handle.get_webview_window("main") {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    }
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        let unstarted = ev.task_state.is_empty()
+            || ev.task_state == "scheduled"
+            || ev.task_state == "notified";
+        if ev.event_type == "task" && unstarted && ev.duration_secs > 0 {
+            ev.task_state = "running".into();
+            ev.task_ends_at = Some(now_ts + ev.duration_secs as i64);
+            ev.task_remaining_secs = None;
+            ev.triggered = true;
+            ev.recurred_today = true;
+            ev.snoozed_until = None;
+            ev.miss_reason = None;
+        }
+    }
+    state.clone()
+}
+
+#[tauri::command]
+pub fn pause_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        if ev.event_type == "task" && ev.task_state == "running" {
+            let remaining = ev
+                .task_ends_at
+                .map(|end| (end - now_ts).max(0) as u64)
+                .unwrap_or(0);
+            ev.task_state = "paused".into();
+            ev.task_ends_at = None;
+            ev.task_remaining_secs = Some(remaining);
+        }
+    }
+    state.clone()
+}
+
+#[tauri::command]
+pub fn resume_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        if ev.event_type == "task" && ev.task_state == "paused" {
+            let remaining = ev.task_remaining_secs.unwrap_or(0);
+            ev.task_state = "running".into();
+            ev.task_ends_at = Some(now_ts + remaining as i64);
+            ev.task_remaining_secs = None;
+        }
+    }
+    state.clone()
+}
+
+/// Restart the sub-timer from the full duration — from any task state,
+/// including done/stopped (run the block again).
+#[tauri::command]
+pub fn restart_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        if ev.event_type == "task" && ev.duration_secs > 0 {
+            ev.task_state = "running".into();
+            ev.task_ends_at = Some(now_ts + ev.duration_secs as i64);
+            ev.task_remaining_secs = None;
+            ev.triggered = true;
+            ev.recurred_today = true;
+            ev.snoozed_until = None;
+        }
+    }
+    state.clone()
+}
+
+/// Finish a task early. The remaining time is frozen (as in pause) rather than
+/// discarded, so the UI keeps showing the elapsed position where it stopped.
+#[tauri::command]
+pub fn stop_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    let now_ts = chrono::Local::now().timestamp();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        if ev.event_type == "task" && crate::state::task_state_is_live(ev) {
+            // Frozen remaining — from ends_at while running, or the stored
+            // value while paused (a paused stop keeps the paused position).
+            let remaining = if ev.task_state == "running" {
+                ev.task_ends_at.map(|end| (end - now_ts).max(0) as u64).unwrap_or(0)
+            } else {
+                ev.task_remaining_secs.unwrap_or(0)
+            };
+            ev.task_state = "stopped".into();
+            ev.task_ends_at = None;
+            ev.task_remaining_secs = Some(remaining);
+        }
+    }
+    state.clone()
+}
+
+/// Acknowledge a completed task — clears it from the strip.
+#[tauri::command]
+pub fn dismiss_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
+    let app_data = app_handle.state::<AppData>();
+    let mut state = app_data.state.lock().unwrap();
+    if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
+        if ev.event_type == "task" && ev.task_state == "done" {
+            ev.task_state = "dismissed".into();
+        }
     }
     state.clone()
 }

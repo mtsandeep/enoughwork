@@ -32,6 +32,19 @@ pub struct ScheduledEvent {
     /// "skipped" (user skipped today's occurrence)
     #[serde(default)]
     pub miss_reason: Option<String>,
+    /// Task events only — sub-timer runtime state. "" for non-tasks and
+    /// not-yet-fired tasks; then "notified" (start notification shown),
+    /// "running", "paused", "done", "stopped" (ended early), "dismissed"
+    /// (done acknowledged, cleared from the strip).
+    #[serde(default)]
+    pub task_state: String,
+    /// Task events: absolute end timestamp while running. Frozen across
+    /// lock/sleep by pushing it forward, like break_until.
+    #[serde(default)]
+    pub task_ends_at: Option<i64>,
+    /// Task events: remaining seconds while paused.
+    #[serde(default)]
+    pub task_remaining_secs: Option<u64>,
 }
 
 /// What interrupt UI was last active (break / reminder / limit), for next-day welcome.
@@ -133,9 +146,16 @@ pub fn event_display_label(ev: &ScheduledEvent) -> String {
     }
     if ev.event_type == "break" {
         "a break".into()
+    } else if ev.event_type == "task" {
+        "a task".into()
     } else {
         "a reminder".into()
     }
+}
+
+/// Sub-timer states that survive a day rollover as live timers.
+pub fn task_state_is_live(ev: &ScheduledEvent) -> bool {
+    matches!(ev.task_state.as_str(), "running" | "paused")
 }
 
 /// Mark an armed event as silently missed (no overlay, no elapsed_at_trigger).
@@ -297,6 +317,11 @@ pub fn mark_missed_recurring_done(events: &mut Vec<ScheduledEvent>, now_ts: i64,
         if ev.recurring_days.is_empty() {
             continue; // one-time events are handled elsewhere
         }
+        // Tasks stay armed until the day ends — they fire whenever the user
+        // is next active, so "missed" never applies within the day.
+        if ev.event_type == "task" {
+            continue;
+        }
         // Dormant (not scheduled today, or pre-arm): skip so we don't mistake
         // it for "missed".
         if ev.triggered && !ev.recurred_today {
@@ -325,7 +350,9 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
     let now = chrono::Local::now();
     let now_ts = now.timestamp();
     let today_weekday = now.weekday().num_days_from_sunday() as u8;
-    events.retain(|e| !e.recurring_days.is_empty());
+    // Keep recurring events (re-armed below) plus one-time tasks whose
+    // sub-timer is still live — a running/paused timer crosses midnight.
+    events.retain(|e| !e.recurring_days.is_empty() || task_state_is_live(e));
     for ev in events.iter_mut() {
         // Reset daily state
         ev.triggered = true; // dormant until re-armed below
@@ -333,6 +360,13 @@ pub fn rollover_events_for_new_day(events: &mut Vec<ScheduledEvent>) {
         ev.snoozed_until = None;
         ev.elapsed_at_trigger = None;
         ev.miss_reason = None;
+        // Live sub-timers survive the rollover untouched; everything else
+        // (finished, never-started, non-task) re-arms fresh.
+        if !task_state_is_live(ev) {
+            ev.task_state = String::new();
+            ev.task_ends_at = None;
+            ev.task_remaining_secs = None;
+        }
 
         if !ev.recurring_days.contains(&today_weekday) {
             // Not scheduled today → stays dormant, but advance trigger_at to the

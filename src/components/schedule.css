@@ -304,6 +304,10 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+/* display:flex would override the hidden attribute — guard it */
+.event-quick-picks[hidden] {
+  display: none;
+}
 
 /* "Custom" break duration pill — expands inline to a h/m editor + tick */
 .event-break-custom {
@@ -386,6 +390,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.event-time-actions {
+  display: flex;
+  gap: 10px;
+}
+.event-now-btn {
+  font-weight: 600;
 }
 .event-mode-btn {
   background: none;

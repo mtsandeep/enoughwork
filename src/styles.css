@@ -12,6 +12,7 @@
 @import "./components/break-countdown.css";
 @import "./components/settings.css";
 @import "./components/schedule.css";
+@import "./components/task-timer.css";
 
 * {
   margin: 0;
@@ -40,6 +41,8 @@
   --teal-solid: #0d9488;
   --teal-solid-hover: #0f766e;
   --amber: #f59e0b;
+  --amber-bg: #fffbeb;
+  --amber-border: #fde68a;
   --border: #e5e7eb;
   --border-strong: #d1d5db;
   --border-hover: #9ca3af;
@@ -68,6 +71,8 @@
   --teal-solid: #17b3a0;
   --teal-solid-hover: #0f9488;
   --amber: #fbbf24;
+  --amber-bg: rgba(245, 158, 11, 0.12);
+  --amber-border: rgba(245, 158, 11, 0.45);
   --border: #3f3f3f;
   --border-strong: #4a4a4a;
   --border-hover: #6d6d6d;

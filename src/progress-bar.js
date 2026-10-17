@@ -41,7 +41,7 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
   // (clientWidth) per second; the minute bucket covers clock drift.
   const sig = [
     limit_secs, Math.floor(now / 60), events.length,
-    events.map(e => `${e.id}:${+e.triggered}:${e.miss_reason || ""}:${e.snoozed_until || 0}:${e.elapsed_at_trigger || 0}`).join(","),
+    events.map(e => `${e.id}:${+e.triggered}:${e.miss_reason || ""}:${e.snoozed_until || 0}:${e.elapsed_at_trigger || 0}:${e.task_state || ""}:${e.task_ends_at || 0}`).join(","),
   ].join("|");
   if (sig === markerSig) return;
   markerSig = sig;
@@ -59,6 +59,53 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
     }
   }
   const seen = new Set();
+
+  // ===== Task range segments =====
+  // A task is a time block, so it renders as a translucent accent bar spanning
+  // its estimated start→end on the elapsed axis (live tasks grow toward their
+  // planned end, like the live break segment).
+  if (dotsHost && limit_secs > 0) {
+    const seenRanges = new Set();
+    for (const ev of events) {
+      if (ev.event_type !== "task" || !firesToday(ev)) continue;
+      if (ev.miss_reason === "skipped") continue;
+      if (ev.task_state === "dismissed" || ev.task_state === "stopped") continue;
+      const live = ev.task_state === "running" || ev.task_state === "paused";
+      const finished = ev.task_state === "done";
+      let startPct;
+      if (live || finished) {
+        if (ev.elapsed_at_trigger == null) continue;
+        startPct = (ev.elapsed_at_trigger / limit_secs) * 100;
+      } else {
+        const estElapsed = elapsed_secs + (ev.trigger_at - now);
+        startPct = (estElapsed / limit_secs) * 100;
+      }
+      const durPct = (ev.duration_secs / limit_secs) * 100;
+      let endPct = startPct + durPct;
+      if (ev.task_state === "running" && ev.task_ends_at) {
+        const estEnd = elapsed_secs + Math.max(0, ev.task_ends_at - now);
+        endPct = Math.min(endPct, (estEnd / limit_secs) * 100);
+      }
+      const left = Math.max(0, startPct);
+      const right = Math.min(100, endPct);
+      if (right <= 0 || left >= 100) continue;
+      let el = dotsHost.querySelector(`.task-range[data-id="${ev.id}"]`);
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "task-range";
+        el.dataset.id = ev.id;
+        dotsHost.appendChild(el);
+      }
+      el.classList.toggle("live", live);
+      el.classList.toggle("done", finished);
+      el.style.left = `${left}%`;
+      el.style.width = `${Math.max(0.5, right - left)}%`;
+      seenRanges.add(String(ev.id));
+    }
+    for (const el of dotsHost.querySelectorAll(".task-range")) {
+      if (!seenRanges.has(String(el.dataset.id))) el.remove();
+    }
+  }
 
   // Position = fraction of elapsed axis (the same axis the blue fill uses).
   // For upcoming events, estimate the elapsed time at trigger using a simple
@@ -141,6 +188,7 @@ export function renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs) {
     // Keep class/label fresh without recreating the node.
     el.classList.toggle("triggered", !!triggered);
     el.classList.toggle("break-type", ev.event_type === "break");
+    el.classList.toggle("task-type", ev.event_type === "task");
     el.dataset.eventLabel = formatEventLabel(ev);
     seen.add(key);
     dots.push({ el, pct: Math.min(x, 100) });
@@ -225,7 +273,9 @@ function formatEventTitle(ev) {
   const clock = formatClock(ev.trigger_at);
   const title = ev.event_type === "break"
     ? `Break ${Math.round(ev.duration_secs / 60)}m`
-    : ev.title || "Reminder";
+    : ev.event_type === "task"
+      ? `${ev.title || "Task"} (${Math.round((ev.duration_secs || 0) / 60)}m)`
+      : ev.title || "Reminder";
   return `<span class="tt-clock">${clock}</span><span class="tt-sub">${title}</span>`;
 }
 
@@ -234,6 +284,12 @@ function formatEventLabel(ev) {
   if (ev.event_type === "break") {
     const m = Math.round(ev.duration_secs / 60);
     return `${ev.triggered ? "✓ " : ""}Break ${m}m — ${clock}`;
+  }
+  if (ev.event_type === "task") {
+    const m = Math.round((ev.duration_secs || 0) / 60);
+    const h = Math.floor(m / 60);
+    const dur = h > 0 ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
+    return `${ev.triggered ? "✓ " : ""}${ev.title || "Task"} · ${dur} — ${clock}`;
   }
   return `${ev.triggered ? "✓ " : ""}${ev.title || "Reminder"} — ${clock}`;
 }

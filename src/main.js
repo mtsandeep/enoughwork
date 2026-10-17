@@ -18,6 +18,7 @@ import { STOPPED_MESSAGES } from "./stopped-messages.js";
 import "./break-picker.js";
 import "./schedule.js";
 import "./theme.js";
+import { renderTaskUI, isTaskPopoutOpen, setTaskWindowVisible } from "./task-timer.js";
 
 // Snooze control (owns its own label from the sticky defaults)
 const snoozeCtl = mountSnoozeControl($("#snooze-slot"), {
@@ -72,7 +73,7 @@ function renderSignature(st) {
   const snoozeLeft = st.status === "snoozed" && st.snooze_until ? Math.max(0, st.snooze_until - now) : 0;
   const breakLeft = st.status === "on_break" && st.break_until ? Math.max(0, st.break_until - now) : 0;
   const evs = (st.events || [])
-    .map(e => `${e.id}:${+e.triggered}:${e.miss_reason || ""}:${e.snoozed_until || 0}:${e.elapsed_at_trigger || 0}:${+e.recurred_today}`)
+    .map(e => `${e.id}:${+e.triggered}:${e.miss_reason || ""}:${e.snoozed_until || 0}:${e.elapsed_at_trigger || 0}:${+e.recurred_today}:${e.task_state || ""}:${e.task_ends_at || 0}:${e.task_remaining_secs || 0}:${e.task_state === "running" && e.task_ends_at ? Math.max(0, e.task_ends_at - now) : 0}`)
     .join(",");
   return [
     st.date, st.status, st.elapsed_secs, st.limit_mins,
@@ -100,7 +101,8 @@ async function refreshState() {
       lastRenderSig = sig;
       let visible = true;
       try { visible = await mainWindow.isVisible(); } catch { /* keep rendering */ }
-      if (forceRender || visible || state.current.status === "on_break") {
+      setTaskWindowVisible(visible);
+      if (forceRender || visible || state.current.status === "on_break" || isTaskPopoutOpen()) {
         forceRender = false;
         render();
       }
@@ -222,6 +224,9 @@ function render() {
 
   // ===== Scheduled event markers + overflow badges =====
   renderEventMarkers(barEl, svgNS, limit_secs, elapsed_secs);
+
+  // ===== Task sub-timers (strip / expanded page / popout feed) =====
+  renderTaskUI(state.current);
 
   // Show snooze button when at/past limit or limit_reached or snoozed
   const pastLimit = elapsed_secs >= limit_secs;
@@ -582,7 +587,7 @@ function sleepPoll(ms) {
     await refreshState();
     let visible = true;
     try { visible = await mainWindow.isVisible(); } catch { /* assume visible */ }
-    const fast = visible || state.current?.status === "on_break";
+    const fast = visible || state.current?.status === "on_break" || isTaskPopoutOpen();
     await sleepPoll(fast ? 1000 : 5000);
   }
 })();

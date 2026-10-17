@@ -4,6 +4,15 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Task sub-timers — a new "Task" event type for timed blocks like "Research — 1h" that run alongside the main timer, independent of your work tracking
+  - Create tasks from the quick-add panel (or "Add Task" on the events page): title, a −/+ duration stepper, start time with a one-click "Now" button, fullscreen/mini notification choice, and repeat weekdays. A task scheduled for "now" starts immediately; a scheduled one shows a start notification (Start / Dismiss, snooze on fullscreen) at its time and stays startable from the events list
+  - A compact strip above the main timer shows the live task — title, elapsed time counting up from 0, and pause/restart/stop/pop-out controls; click it to expand a full-window view with a progress ring, the same controls, and tabs when several tasks run at once
+  - Pop out any task to a small always-on-top floating window: a see-through card at rest that follows the app theme, with the controls in a drawer that slides up over the progress bar on hover
+  - When a task's time is up, a completion notification (per its fullscreen/mini setting) shows when it ended with Restart / Done; stopping a task manually freezes the strip where it ended for a few seconds with Restart available before it hides
+  - Task timers freeze across lock/sleep like breaks, survive app restarts and the day rollover, and editing a running task's duration keeps its elapsed progress
+  - Tasks appear in the events list with live state ("32m of 1h", paused, done, waiting to start) and as an amber range band on the progress bar; multiple tasks can run at the same time
+
 ### Fixed
 - Timer no longer appears to gain a second after the limit overlay — the window syncs the moment any overlay fires, showing the final value before the overlay covers the screen
 

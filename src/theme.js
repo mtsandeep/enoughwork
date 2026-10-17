@@ -28,6 +28,8 @@ export function applyTheme() {
   const resolved = resolvedTheme();
   root.dataset.theme = resolved;
   document.dispatchEvent(new CustomEvent("themechange", { detail: resolved }));
+  // Broadcast to other app windows (e.g. the task popout) so they follow.
+  try { window.__TAURI__?.event?.emit("app-theme", resolved); } catch {}
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-switching")));
   return resolved;
 }

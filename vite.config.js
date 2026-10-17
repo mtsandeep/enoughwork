@@ -23,6 +23,7 @@ export default {
         "break-countdown": resolve(__dirname, "src/windows/break-countdown.html"),
         "event-notify": resolve(__dirname, "src/windows/event-notify.html"),
         "update-notify": resolve(__dirname, "src/windows/update-notify.html"),
+        "task-timer": resolve(__dirname, "src/windows/task-timer.html"),
       },
     },
   },

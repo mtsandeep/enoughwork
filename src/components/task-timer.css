@@ -1,0 +1,376 @@
+/* Task sub-timers: strip above the main timer, expanded task page, popout
+   accents — all on the amber token family. */
+
+/* ===== Strip (compact, above the main timer) ===== */
+.task-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 460px;
+  /* Container gap is 28px — pull the strip closer to the timer it belongs to */
+  margin-bottom: -12px;
+  padding: 8px 14px;
+  /* Light mode: faint tint + soft border so the chip melts into the page
+     background (dark mode overrides use the neutral surface). */
+  border: 1.5px solid rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.05);
+  border-radius: var(--radius);
+  animation: task-strip-in 0.2s ease-out;
+}
+.task-strip[hidden] {
+  display: none;
+}
+@keyframes task-strip-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.task-strip-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  font-family: inherit;
+}
+
+.task-strip-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-strip-time {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.task-strip.paused .task-strip-time,
+.task-strip.stopped .task-strip-time {
+  color: var(--muted);
+}
+
+.task-strip-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.task-strip-controls {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.task-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.task-icon-btn:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: var(--surface);
+}
+.task-icon-btn.task-icon-danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.task-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+.task-icon-btn[hidden] {
+  display: none;
+}
+
+/* ===== Expanded task page ===== */
+.task-page {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: page-rise 0.2s ease-out;
+}
+.task-page[hidden] {
+  display: none;
+}
+
+.task-page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 48px 40px 24px;
+}
+
+/* Header matches the popout window: small amber uppercase label + title */
+.task-page-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-page-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.task-page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  word-break: break-word;
+  max-width: 420px;
+}
+
+.task-page-ringwrap {
+  position: relative;
+  width: 230px;
+  height: 230px;
+}
+
+.task-page-ringsvg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.task-ring-track {
+  fill: none;
+  stroke: var(--divider);
+  stroke-width: 5;
+}
+
+.task-ring-fill {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.task-ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-page-time {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.task-page-time.has-hours {
+  font-size: 36px;
+}
+
+.task-page-sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* State label inside the ring, under the time — height reserved so the
+   countdown never shifts when Paused/Stopped/Done appears. */
+.task-page-state {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.2;
+  min-height: 16px;
+}
+.task-paused .task-page-state {
+  color: var(--amber);
+}
+.task-done .task-page-state {
+  color: var(--teal);
+}
+.task-done .task-ring-fill {
+  stroke: var(--teal);
+}
+
+.task-page-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Icon + label pills — the strip's icon language with visible text */
+.task-page-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 24px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.task-page-ctrl svg {
+  flex-shrink: 0;
+}
+.task-page-ctrl:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: var(--amber-bg);
+}
+.task-page-ctrl.danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.task-page-ctrl:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+.task-page-ctrl[hidden] {
+  display: none;
+}
+
+.task-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 440px;
+}
+
+.task-tab {
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.task-tab:hover {
+  border-color: var(--accent);
+}
+.task-tab.active {
+  background: var(--amber-bg);
+  border-color: var(--amber);
+  color: var(--text);
+}
+
+/* ===== Progress-bar task markers ===== */
+/* Translucent amber band behind the dots — a task is a range, not a point;
+   the band distinguishes task markers from lone amber reminder dots */
+.task-range {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 3px;
+  background: var(--amber);
+  opacity: 0.18;
+  pointer-events: none;
+}
+.task-range.live {
+  opacity: 0.32;
+}
+.task-range.done {
+  background: var(--teal);
+  opacity: 0.25;
+}
+
+/* Task dots — amber like every task surface; they sit inside their range band */
+.event-dot.task-type {
+  background: var(--amber);
+}
+.event-dot.task-type:hover,
+.event-dot.task-type.is-active {
+  background: #d97706;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.28), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+}
+
+/* ===== Events list task chips ===== */
+/* display:flex containers must guard the hidden attribute explicitly */
+.event-task-duration[hidden] {
+  display: none;
+}
+.task-tabs[hidden] {
+  display: none;
+}
+
+.event-row-dot.task-dot {
+  background: var(--amber);
+}
+.event-badge-task {
+  color: #92400e;
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+}
+
+/* ===== Dark theme overrides ===== */
+:root[data-theme="dark"] .task-icon-btn:hover {
+  background: var(--surface-2);
+}
+:root[data-theme="dark"] .event-badge-task {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+/* Dark: neutral card surface — a tinted bg under amber digits muddies both */
+:root[data-theme="dark"] .task-strip {
+  background: var(--surface);
+  border-color: rgba(245, 158, 11, 0.15);
+}

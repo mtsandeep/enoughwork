@@ -53,10 +53,20 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
             let time_running = system_active
                 && (state.status == "active" || state.status == "on_break");
 
-            // Freeze break countdown across lock/sleep by pushing break_until forward.
-            if state.status == "on_break" && !system_active && wall_delta > 0 {
-                if let Some(until) = state.break_until.as_mut() {
-                    *until += wall_delta;
+            // Freeze break/task countdowns across lock/sleep by pushing their
+            // absolute end times forward.
+            if !system_active && wall_delta > 0 {
+                if state.status == "on_break" {
+                    if let Some(until) = state.break_until.as_mut() {
+                        *until += wall_delta;
+                    }
+                }
+                for ev in state.events.iter_mut() {
+                    if ev.event_type == "task" && ev.task_state == "running" {
+                        if let Some(end) = ev.task_ends_at.as_mut() {
+                            *end += wall_delta;
+                        }
+                    }
                 }
             }
 
@@ -123,7 +133,54 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
             let elapsed_now = state.elapsed_secs;
             let miss_reason = miss_reason_for_elapsed(elapsed_now);
             let mut fired_events: Vec<crate::state::ScheduledEvent> = Vec::new();
+
+            // Tasks (sub-timers) are handled separately from reminders/breaks:
+            // a task's start notification fires whenever the session is usable
+            // and the start time has passed — no 60s window, it stays armed
+            // until the day ends. A running sub-timer completes on its own.
+            let mut ended_tasks: Vec<crate::state::ScheduledEvent> = Vec::new();
             for ev in state.events.iter_mut() {
+                if ev.event_type != "task" {
+                    continue;
+                }
+                if ev.task_state == "running" {
+                    if system_active {
+                        if let Some(end) = ev.task_ends_at {
+                            if now_ts >= end {
+                                ev.task_state = "done".into();
+                                // Keep task_ends_at: the completion card shows
+                                // "Ended at" from it.
+                                ev.task_remaining_secs = None;
+                                ended_tasks.push(ev.clone());
+                            }
+                        }
+                    }
+                    continue;
+                }
+                // Not live: eligible to fire (show the start notification) if
+                // still armed for today and not already notified.
+                if ev.triggered && ev.snoozed_until.is_none() {
+                    continue;
+                }
+                let due = match ev.snoozed_until {
+                    Some(s) => s <= now_ts,
+                    None => ev.trigger_at <= now_ts,
+                };
+                if due && system_active {
+                    ev.triggered = true;
+                    ev.recurred_today = true;
+                    ev.snoozed_until = None;
+                    ev.miss_reason = None;
+                    ev.elapsed_at_trigger = Some(elapsed_now);
+                    ev.task_state = "notified".into();
+                    fired_events.push(ev.clone());
+                }
+            }
+
+            for ev in state.events.iter_mut() {
+                if ev.event_type == "task" {
+                    continue; // handled above
+                }
                 let is_recurring = !ev.recurring_days.is_empty();
                 let is_break = ev.event_type == "break";
                 let can_fire = if is_break { time_running } else { system_active };
@@ -197,8 +254,14 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                 }
             }
 
-            // Record interrupt labels for fired events (welcome / replace bookkeeping)
+            // Record interrupt labels for fired events (welcome / replace
+            // bookkeeping). Tasks are excluded — their start notification
+            // doesn't block the session, so it never gates the next-day
+            // welcome.
             for ev in &fired_events {
+                if ev.event_type == "task" {
+                    continue;
+                }
                 state.active_interrupt = Some(ActiveInterrupt {
                     kind: ev.event_type.clone(),
                     label: event_display_label(ev),
@@ -242,6 +305,10 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
 
             for ev in fired_events {
                 let _ = ah.emit("event-triggered", &ev);
+            }
+
+            for ev in ended_tasks {
+                let _ = ah.emit("task-ended", &ev);
             }
         }
     });
