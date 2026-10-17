@@ -111,6 +111,27 @@ document.getElementById("btn-popin").addEventListener("click", async () => {
   await emit("task-action", { id: taskId, action: "popin" });
 });
 
+// Transparency toggle: pin the card opaque; the choice persists across
+// popout sessions (shared localStorage with the main window).
+const glassBtn = document.getElementById("btn-glass");
+const glassKey = "taskPopoutSolid";
+let solidGlass = localStorage.getItem(glassKey) === "1";
+
+function applyGlass() {
+  container.classList.toggle("no-glass", solidGlass);
+  document.getElementById("ic-glass").style.display = solidGlass ? "none" : "";
+  document.getElementById("ic-solid").style.display = solidGlass ? "" : "none";
+  glassBtn.title = solidGlass ? "Enable transparency" : "Disable transparency";
+}
+applyGlass();
+
+glassBtn.addEventListener("click", () => {
+  solidGlass = !solidGlass;
+  localStorage.setItem(glassKey, solidGlass ? "1" : "0");
+  applyGlass();
+  glassBtn.blur(); // keep :focus-within from pinning the drawer open
+});
+
 // A clicked button keeps focus, which would pin the drawer open via
 // :focus-within — release it so the drawer follows the mouse out again.
 document.querySelectorAll(".task-popout-btn").forEach((b) =>

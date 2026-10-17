@@ -5,6 +5,7 @@
 
 import { $, state, invoke, listen, emit, WebviewWindow } from "./state.js";
 import { render } from "./main.js";
+import { getMonitors } from "./window-utils.js";
 
 function nowSecs() {
   return Math.floor(Date.now() / 1000);
@@ -276,6 +277,36 @@ export function isTaskPopoutOpen() {
   return popoutTaskId != null;
 }
 
+const POS_KEY = "taskPopoutPos";
+
+function readSavedPos() {
+  try {
+    const p = JSON.parse(localStorage.getItem(POS_KEY) || "null");
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) return p;
+  } catch {}
+  return null;
+}
+
+// A saved spot only counts while it lands on a currently connected monitor
+// (physical px) — otherwise let the OS place the window in a visible spot.
+async function readVisibleSavedPos() {
+  const p = readSavedPos();
+  if (!p) return null;
+  try {
+    const monitors = await getMonitors();
+    const visible = (monitors || []).some(
+      (m) =>
+        p.x >= m.position.x &&
+        p.x < m.position.x + m.size.width &&
+        p.y >= m.position.y &&
+        p.y < m.position.y + m.size.height
+    );
+    return visible ? p : null;
+  } catch {
+    return p;
+  }
+}
+
 export async function openTaskPopout(id) {
   const ev = state.current?.events?.find((e) => e.id === id);
   if (!ev) return;
@@ -286,17 +317,40 @@ export async function openTaskPopout(id) {
     `&remaining=${taskRemainingSecs(ev, now)}&total=${ev.duration_secs || 0}&state=${ev.task_state}`;
   popoutTaskId = id;
   closeTaskPage();
+  const savedPos = await readVisibleSavedPos();
   try {
     popoutWin = new WebviewWindow("task-timer-0", {
       url,
       width: 300,
       height: 140,
       transparent: true,
+      shadow: false, // no OS drop shadow — the card floats flat
       decorations: false,
       alwaysOnTop: true,
       skipTaskbar: true,
       resizable: false,
+      // Hidden until restored to the saved position (no flash at the default spot)
+      visible: !savedPos,
       title: "EnoughWork",
+    });
+    if (savedPos) {
+      popoutWin.once("tauri://created", async () => {
+        try {
+          const { PhysicalPosition } = window.__TAURI__.dpi;
+          await popoutWin.setPosition(new PhysicalPosition(savedPos.x, savedPos.y));
+        } catch {}
+        try { await popoutWin.show(); } catch {}
+      });
+    }
+    // Remember the position while the window is dragged (throttled writes).
+    let lastSave = 0;
+    popoutWin.onMoved?.((e) => {
+      const t = Date.now();
+      if (t - lastSave < 250) return;
+      lastSave = t;
+      try {
+        localStorage.setItem(POS_KEY, JSON.stringify({ x: e.payload.x, y: e.payload.y }));
+      } catch {}
     });
     popoutWin.once("tauri://destroyed", () => {
       popoutWin = null;

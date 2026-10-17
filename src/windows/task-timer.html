@@ -16,15 +16,25 @@
   </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* The only rounding — a wrapper div clips reliably (overflow on html/body
+       propagates to the viewport and voids their corner clip). */
+    .popout-clip {
+      position: fixed;
+      inset: 0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       background: transparent;
       color: #111;
       user-select: none;
-      border-radius: 12px;
       overflow: hidden;
     }
-    /* Glass at rest — mostly transparent, melts to opaque on hover */
+    /* Glass at rest — mostly transparent, melts to opaque on hover. No
+       shadow: the OS frameless shadow is disabled and CSS shadows would clip
+       at the window edge, so the card floats flat. Corners come from the
+       body's rounded clip — no radius of its own. */
     .task-popout {
       position: relative;
       height: 100vh;
@@ -34,9 +44,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.45);
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.5);
       transition: background 0.25s ease;
       cursor: grab;
     }
@@ -51,13 +59,51 @@
       cursor: pointer;
     }
 
+    /* Top-left droplet: pins the card opaque (no transparency) */
+    .task-popout-glass-toggle {
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      padding: 0;
+      color: rgba(0, 0, 0, 0.25);
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .task-popout-glass-toggle:hover {
+      color: #f59e0b;
+    }
+    html[data-theme="dark"] .task-popout-glass-toggle {
+      color: rgba(255, 255, 255, 0.3);
+    }
+    /* Solid card while transparency is disabled — fully opaque, and the
+       hover/focus rules can never reintroduce the glass */
+    .task-popout.no-glass,
+    .task-popout.no-glass:hover,
+    .task-popout.no-glass:focus-within {
+      background: #ffffff;
+    }
+    html[data-theme="dark"] .task-popout.no-glass,
+    html[data-theme="dark"] .task-popout.no-glass:hover,
+    html[data-theme="dark"] .task-popout.no-glass:focus-within {
+      background: #202020;
+    }
+
     /* "TASK · title" on one line — baseline alignment puts the mixed font
-       sizes on one typographic baseline */
+       sizes on one typographic baseline; side padding keeps long titles
+       clear of the corner icons */
     .task-popout-head {
       display: flex;
       align-items: baseline;
       gap: 6px;
       max-width: 100%;
+      padding: 0 16px;
     }
     .task-popout-label {
       font-size: 10px;
@@ -139,7 +185,7 @@
       right: 0;
       bottom: 0;
       height: 48px;
-      border-radius: 0 0 12px 12px;
+      border-radius: 0 0 8px 8px;
       background: #ffffff;
       box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.09);
       display: flex;
@@ -182,8 +228,7 @@
 
     /* ===== Dark theme (mirrors the app's dark tokens) ===== */
     html[data-theme="dark"] .task-popout {
-      background: rgba(32, 32, 32, 0.55);
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+      background: rgba(32, 32, 32, 0.6);
     }
     html[data-theme="dark"] .task-popout:hover,
     html[data-theme="dark"] .task-popout:focus-within {
@@ -226,7 +271,12 @@
   </style>
 </head>
 <body>
+  <div class="popout-clip">
   <div class="task-popout" id="task-popout">
+    <button class="task-popout-glass-toggle" id="btn-glass" title="Disable transparency">
+      <svg id="ic-glass" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="9" r="7"/><circle cx="9" cy="15" r="7"/></svg>
+      <svg id="ic-solid" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="7"/></svg>
+    </button>
     <div class="task-popout-head">
       <span class="task-popout-label">Task</span>
       <span class="task-popout-title" id="task-title">Task</span>
@@ -251,6 +301,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
     </div>
+  </div>
   </div>
   <script type="module" src="../task-timer-window.js"></script>
 </body>

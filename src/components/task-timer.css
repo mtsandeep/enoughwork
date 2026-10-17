@@ -299,9 +299,11 @@
 }
 
 .task-tab {
-  /* Uniform width at rest; grows to fit the title on hover */
-  width: 160px;
+  /* Uniform 160px at rest (min+max clamp the content width); hover animates
+     max-width open, so the chip eases to exactly its content width */
+  width: max-content;
   min-width: 160px;
+  max-width: 160px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -314,8 +316,9 @@
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, max-width 0.18s cubic-bezier(0.2, 0, 0.2, 1);
   font-family: inherit;
+  overflow: hidden;
 }
 .task-tab-title {
   flex: 1;
@@ -332,9 +335,8 @@
 }
 .task-tab:hover {
   border-color: var(--border-hover);
-  /* Fit the content exactly — never below the resting width, capped at 340 */
-  width: max-content;
-  max-width: 340px;
+  /* Opens up to the cap; content-sized titles stop exactly at their width */
+  max-width: 360px;
 }
 .task-tab.active {
   background: #f8ecce;
