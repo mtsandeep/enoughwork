@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-10-17
+
 ### Added
 - Task sub-timers — a new "Task" event type for timed blocks like "Research — 1h" that run alongside the main timer, independent of your work tracking
   - Create tasks from the quick-add panel (or "Add Task" on the events page): title, a −/+ duration stepper, start time with a one-click "Now" button, fullscreen/mini notification choice, and repeat weekdays. A task scheduled for "now" starts immediately; a scheduled one shows a start notification (Start / Dismiss, snooze on fullscreen) at its time and stays startable from the events list
