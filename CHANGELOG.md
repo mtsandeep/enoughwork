@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.14] - 2026-11-25
+
 ### Fixed
 - Fixed-time task start and end notifications now display both the **From** and **To** times (`Scheduled 11:00 AM – 1:00 PM` / `Ended at 1:00 PM (11:00 AM – 1:00 PM)`), and tasks whose **To** time passes while still notified or snoozed transition cleanly to the **Task Done** screen instead of showing the start card
 
