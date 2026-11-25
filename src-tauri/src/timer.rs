@@ -157,6 +157,19 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                     }
                     continue;
                 }
+                // Fixed-time tasks whose window already ended while notified
+                // (never started) transition straight to done.
+                if ev.fixed_time && ev.task_state == "notified" && system_active {
+                    let fixed_end = ev.trigger_at + ev.duration_secs as i64;
+                    if now_ts >= fixed_end {
+                        ev.task_state = "done".into();
+                        ev.task_ends_at = Some(fixed_end);
+                        ev.task_remaining_secs = None;
+                        ev.snoozed_until = None;
+                        ended_tasks.push(ev.clone());
+                        continue;
+                    }
+                }
                 // Not live: eligible to fire (show the start notification) if
                 // still armed for today and not already notified.
                 if ev.triggered && ev.snoozed_until.is_none() {
@@ -172,8 +185,16 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                     ev.snoozed_until = None;
                     ev.miss_reason = None;
                     ev.elapsed_at_trigger = Some(elapsed_now);
-                    ev.task_state = "notified".into();
-                    fired_events.push(ev.clone());
+                    let fixed_end = ev.trigger_at + ev.duration_secs as i64;
+                    if ev.fixed_time && now_ts >= fixed_end {
+                        ev.task_state = "done".into();
+                        ev.task_ends_at = Some(fixed_end);
+                        ev.task_remaining_secs = None;
+                        ended_tasks.push(ev.clone());
+                    } else {
+                        ev.task_state = "notified".into();
+                        fired_events.push(ev.clone());
+                    }
                 }
             }
 

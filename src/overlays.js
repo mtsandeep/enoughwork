@@ -406,7 +406,9 @@ let eventNotifyId = 0;
 
 function eventNotifyUrl(ev, mode, kind = "reminder") {
   const title = encodeURIComponent(ev.title || "Reminder");
-  return `src/windows/event-notify.html?id=${ev.id}&title=${title}&mode=${mode}&at=${ev.trigger_at}&kind=${kind}&fixed=${ev.fixed_time ? 1 : 0}`;
+  const startAt = ev.start_at || ev.trigger_at || 0;
+  const endAt = ev.task_ends_at || (startAt && ev.duration_secs ? startAt + ev.duration_secs : 0);
+  return `src/windows/event-notify.html?id=${ev.id}&title=${title}&mode=${mode}&at=${ev.trigger_at}&start=${startAt}&end=${endAt}&kind=${kind}&fixed=${ev.fixed_time ? 1 : 0}`;
 }
 
 /** Close whatever interrupt is up so the next one can take the screen. */
@@ -618,8 +620,12 @@ listen("task-dismiss", async (event) => {
 listen("task-ended", async (event) => {
   const ev = event.payload;
   await prepareInterruptReplace();
-  // The done card's time line shows the end time, not the schedule time.
-  const doneEv = { ...ev, trigger_at: ev.task_ends_at || ev.trigger_at };
+  // The done card's time line shows the end time, while preserving start_at for fixed-time ranges.
+  const doneEv = {
+    ...ev,
+    start_at: ev.trigger_at,
+    trigger_at: ev.task_ends_at || ev.trigger_at,
+  };
   await withMainKeptHidden(async () => {
     if (ev.overlay_type === "mini") {
       await openEventNotifyMini(doneEv, "task-done");

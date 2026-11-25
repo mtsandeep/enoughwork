@@ -44,14 +44,26 @@ if (kind !== "reminder") {
   document.body.classList.add("task");
 }
 
-if (scheduledAt) {
-  const d = new Date(scheduledAt * 1000);
+function formatClockTs(ts) {
+  const d = new Date(ts * 1000);
   let h = d.getHours();
   const min = String(d.getMinutes()).padStart(2, "0");
   const ampm = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
+  return `${h}:${min} ${ampm}`;
+}
+
+const isFixed = params.get("fixed") === "1";
+const startAt = parseInt(params.get("start")) || scheduledAt;
+const endAt = parseInt(params.get("end")) || 0;
+
+if (isFixed && startAt && endAt) {
+  const range = `${formatClockTs(startAt)} – ${formatClockTs(endAt)}`;
+  document.getElementById("event-time").textContent =
+    kind === "task-done" ? `Ended at ${formatClockTs(endAt)} (${range})` : `Scheduled ${range}`;
+} else if (scheduledAt) {
   const prefix = kind === "task-done" ? "Ended at" : "Scheduled for";
-  document.getElementById("event-time").textContent = `${prefix} ${h}:${min} ${ampm}`;
+  document.getElementById("event-time").textContent = `${prefix} ${formatClockTs(scheduledAt)}`;
 } else {
   document.getElementById("event-time").textContent = "";
 }
