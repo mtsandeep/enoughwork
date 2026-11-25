@@ -379,7 +379,9 @@
 .event-task-duration[hidden] {
   display: none;
 }
-.task-tabs[hidden] {
+.task-tabs[hidden],
+.task-icon-btn[hidden],
+.task-page-ctrl[hidden] {
   display: none;
 }
 

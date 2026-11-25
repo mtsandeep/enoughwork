@@ -38,7 +38,7 @@ function formatClockTime(secs) {
     : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function render({ id, title, state, remaining, total }) {
+function render({ id, title, state, remaining, total, fixed }) {
   if (id !== taskId) return; // another task's tick — ignore
 
   // Same-string writes still mutate the DOM — only write on change.
@@ -78,13 +78,16 @@ function render({ id, title, state, remaining, total }) {
     fillEl.style.width = `${pct}%`;
   }
 
-  lastTick = { remaining, total, state, at: Date.now() };
+  lastTick = { remaining, total, state, fixed: !!fixed, at: Date.now() };
 
+  const isFixed = !!fixed;
+  toggleBtn.hidden = isFixed;
+  document.getElementById("btn-restart").hidden = isFixed;
   icPause.style.display = paused ? "none" : "";
   icPlay.style.display = paused ? "" : "none";
   toggleBtn.title = paused ? "Resume" : "Pause";
   // Buttons stay visible across states; inapplicable ones disable.
-  toggleBtn.disabled = !live;
+  toggleBtn.disabled = !live || isFixed;
   document.getElementById("btn-stop").disabled = !live;
 }
 
@@ -96,6 +99,7 @@ const init = {
   state: params.get("state") || "running",
   remaining: parseInt(params.get("remaining")) || 0,
   total: parseInt(params.get("total")) || 0,
+  fixed: params.get("fixed") === "1",
 };
 let lastTick = null; // last authoritative/local tick state
 if (createdAt && init.remaining > 0 && init.state === "running") {
@@ -116,6 +120,7 @@ setInterval(() => {
     state: lastTick.state,
     remaining: Math.max(0, lastTick.remaining - drift),
     total: lastTick.total,
+    fixed: lastTick.fixed,
   });
 }, 1000);
 

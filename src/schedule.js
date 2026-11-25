@@ -19,6 +19,7 @@ let evtRelEditing = false;           // relative time manual-edit mode
 let evtRecurring = false;            // repeat daily toggle
 let evtRecurDays = new Set();        // selected weekdays (0=Sun..6=Sat)
 let evtDurEditing = false;           // task duration inline-edit mode
+let evtTaskMode = "duration";        // "duration" | "fixed" (tasks only)
 // The When value is remembered per event type — a task's "0h 00m (start now)"
 // must not leak into the reminder/break tabs, which have their own minimum.
 const evtRelMinByType = { reminder: 30, break: 30, task: 0 };
@@ -27,11 +28,16 @@ let eventsEditingId = null;          // id of the event being edited
 
 const evtPanel = $("#event-add-panel");
 
+function toHHMM(date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
 function resetEventForm() {
   evtType = "reminder";
   evtOverlay = "fullscreen";
   evtBreakMin = 15;
   evtBreakCustom = false;
+  evtTaskMode = "duration";
   hideEventBreakEditor();
   closeTaskDurEdit();
   evtTimeMode = "clock";
@@ -39,9 +45,12 @@ function resetEventForm() {
   // default clock = now + 30 min, rounded to next minute
   const def = new Date(Date.now() + 30 * 60 * 1000);
   def.setSeconds(0, 0);
-  const hh = String(def.getHours()).padStart(2, "0");
-  const mm = String(def.getMinutes()).padStart(2, "0");
-  $("#event-clock-input").value = `${hh}:${mm}`;
+  $("#event-clock-input").value = toHHMM(def);
+  const nowDate = new Date();
+  nowDate.setSeconds(0, 0);
+  const toDate = new Date(nowDate.getTime() + 60 * 60 * 1000);
+  $("#event-from-input").value = toHHMM(nowDate);
+  $("#event-to-input").value = toHHMM(toDate);
   evtRelMin = 30;
   updateEventRelDisplay();
   closeEventRelEdit();
@@ -98,8 +107,30 @@ function saveEventBreakEdit() {
   applyEventFormState();
 }
 
+function computeFixedRange() {
+  const [fh, fm] = ($("#event-from-input").value || "00:00").split(":").map(Number);
+  const [th, tm] = ($("#event-to-input").value || "00:00").split(":").map(Number);
+  const fromMins = (fh || 0) * 60 + (fm || 0);
+  const toMins = (th || 0) * 60 + (tm || 0);
+  if (toMins <= fromMins) return { valid: false };
+  const now = Math.floor(Date.now() / 1000);
+  const fromDate = new Date();
+  fromDate.setHours(fh || 0, fm || 0, 0, 0);
+  const toDate = new Date();
+  toDate.setHours(th || 0, tm || 0, 0, 0);
+  let fromTs = Math.floor(fromDate.getTime() / 1000);
+  let toTs = Math.floor(toDate.getTime() / 1000);
+  // If the entire window has already ended today, schedule for tomorrow.
+  if (toTs <= now) {
+    fromTs += 24 * 3600;
+    toTs += 24 * 3600;
+  }
+  return { valid: true, triggerAt: fromTs, durationSecs: toTs - fromTs };
+}
+
 function applyEventFormState() {
   const isTask = evtType === "task";
+  const isFixedTask = isTask && evtTaskMode === "fixed";
   // type toggle
   document.querySelectorAll("#event-type-toggle .event-type-btn").forEach(b => {
     b.classList.toggle("active", b.dataset.type === evtType);
@@ -108,11 +139,20 @@ function applyEventFormState() {
   // fields with reminders/breaks; only breaks hide title + notification.
   $("#event-title-field").hidden = evtType === "break";
   $("#event-duration-field").hidden = !(evtType === "break" || isTask);
-  $("#event-duration-label").textContent = isTask ? "Duration" : "Break duration";
-  // Breaks use the quick picks; tasks use the −/+ stepper.
+  $("#event-duration-label").textContent = isFixedTask
+    ? "Time range"
+    : (isTask ? "Duration" : "Break duration");
+  $("#event-task-mode-toggle").hidden = !isTask;
+  document.querySelectorAll("#event-task-mode-toggle .event-pill-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.taskMode === evtTaskMode);
+  });
+  // Breaks use the quick picks; tasks use either the −/+ stepper or From/To.
   $("#event-break-picks").hidden = isTask;
-  $("#event-task-duration").hidden = !isTask;
-  if (isTask) {
+  $("#event-task-duration").hidden = !isTask || isFixedTask;
+  $("#event-fixed-range").hidden = !isFixedTask;
+  const fixedRange = isFixedTask ? computeFixedRange() : { valid: true };
+  $("#event-fixed-error").hidden = !isFixedTask || fixedRange.valid;
+  if (isTask && !isFixedTask) {
     $("#event-dur-display").textContent = `${Math.floor(evtBreakMin / 60)}h ${String(evtBreakMin % 60).padStart(2, "0")}m`;
     if (!evtDurEditing) {
       $("#event-dur-h-input").value = Math.floor(evtBreakMin / 60);
@@ -147,24 +187,31 @@ function applyEventFormState() {
   });
   // time mode
   const isClock = evtTimeMode === "clock";
+  $("#event-when-field").hidden = isFixedTask;
   $("#event-time-clock").hidden = !isClock;
   $("#event-time-relative").hidden = isClock;
   $("#event-mode-btn").textContent = isClock ? "in Xh Ym" : "at HH:MM";
   // "Now" only means something for tasks (start the sub-timer immediately).
   $("#event-now-btn").hidden = !isTask;
-  // recurring field only available in clock mode
-  $("#event-recurring-field").hidden = !isClock;
-  $("#event-day-picks").hidden = !isClock || !evtRecurring;
+  // recurring field available in clock mode or fixed-time task mode
+  const canRecur = isClock || isFixedTask;
+  $("#event-recurring-field").hidden = !canRecur;
+  $("#event-day-picks").hidden = !canRecur || !evtRecurring;
   $("#event-recurring-toggle").checked = evtRecurring;
   document.querySelectorAll("#event-day-picks .event-day-btn").forEach(b => {
     b.classList.toggle("active", evtRecurDays.has(parseInt(b.dataset.day)));
   });
   // Confirm label: a task whose start time resolves to "now" starts its
   // sub-timer immediately on confirm.
+  const nowTs = Math.floor(Date.now() / 1000);
+  const effectiveStart = isFixedTask
+    ? (fixedRange.valid ? fixedRange.triggerAt : nowTs + 9999)
+    : computeEventTriggerAt();
   const confirmLabel = evtType === "task"
-    ? (computeEventTriggerAt() <= Math.floor(Date.now() / 1000) + 2 ? "Start Task" : "Schedule Task")
+    ? (effectiveStart <= nowTs + 2 ? "Start Task" : "Schedule Task")
     : "Schedule";
   $("#event-add-confirm").textContent = confirmLabel;
+  $("#event-add-confirm").disabled = isFixedTask && !fixedRange.valid;
 }
 
 function computeEventTriggerAt() {
@@ -436,27 +483,46 @@ $("#event-now-btn").addEventListener("click", () => {
   applyEventFormState();
 });
 
+// Task mode toggle (Duration / Fixed Time)
+document.querySelectorAll("#event-task-mode-toggle .event-pill-btn").forEach(b => {
+  b.addEventListener("click", () => {
+    evtTaskMode = b.dataset.taskMode;
+    applyEventFormState();
+  });
+});
+
+$("#event-from-input").addEventListener("change", () => applyEventFormState());
+$("#event-to-input").addEventListener("change", () => applyEventFormState());
+
 // Clock-time edits can flip a task between "Schedule" and "Start now".
 $("#event-clock-input").addEventListener("change", () => applyEventFormState());
 
 $("#event-add-confirm").addEventListener("click", async () => {
-  const trigger_at = computeEventTriggerAt();
+  const isFixedTask = evtType === "task" && evtTaskMode === "fixed";
+  const fixedRange = isFixedTask ? computeFixedRange() : null;
+  if (isFixedTask && !fixedRange.valid) return;
+
+  const trigger_at = isFixedTask ? fixedRange.triggerAt : computeEventTriggerAt();
   const title = $("#event-title-input").value.trim();
   if ((evtType === "reminder" || evtType === "task") && !title) {
     $("#event-title-input").focus();
     return;
   }
-  // Recurring only applies in clock mode with the toggle on
-  const recurringDays = (evtTimeMode === "clock" && evtRecurring)
+  // Recurring applies in clock mode or fixed-time task mode with the toggle on
+  const recurringDays = ((evtTimeMode === "clock" || isFixedTask) && evtRecurring)
     ? Array.from(evtRecurDays)
     : [];
+  const durationSecs = isFixedTask
+    ? fixedRange.durationSecs
+    : ((evtType === "break" || evtType === "task") ? evtBreakMin * 60 : 0);
   const payload = {
     eventType: evtType,
     title: evtType === "break" ? "" : title,
     triggerAt: trigger_at,
-    durationSecs: (evtType === "break" || evtType === "task") ? evtBreakMin * 60 : 0,
+    durationSecs,
     overlayType: evtOverlay,
     recurringDays,
+    fixedTime: isFixedTask,
   };
   if (editingConfirmMode && eventsEditingId != null) {
     state.current = await invoke("update_event", { id: eventsEditingId, ...payload });
@@ -661,12 +727,13 @@ export function enterEditMode(id) {
   evtType = ev.event_type;
   evtOverlay = ev.overlay_type || "fullscreen";
   evtBreakMin = Math.max(1, Math.round((ev.duration_secs || 0) / 60));
+  evtTaskMode = (ev.event_type === "task" && ev.fixed_time) ? "fixed" : "duration";
   $("#event-title-input").value = ev.title || "";
   evtTimeMode = "clock";
   const d = new Date(ev.trigger_at * 1000);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  $("#event-clock-input").value = `${hh}:${mm}`;
+  $("#event-clock-input").value = toHHMM(d);
+  $("#event-from-input").value = toHHMM(d);
+  $("#event-to-input").value = toHHMM(new Date((ev.trigger_at + (ev.duration_secs || 3600)) * 1000));
   evtRelMin = 30;
   updateEventRelDisplay();
   closeEventRelEdit();
@@ -749,19 +816,20 @@ export function renderEventsList() {
     let taskBtns = "";
     if (isTask) {
       const st = ev.task_state || "";
+      const isFixed = !!ev.fixed_time;
       const armed = st === "" || st === "notified";
       if (armed && (st === "notified" || ev.trigger_at <= now || ev.snoozed_until)) {
         taskBtns += `<button class="event-row-btn" data-action="task-start" data-tooltip="Start now">${playIcon}</button>`;
       }
       if (st === "running") {
-        taskBtns += `<button class="event-row-btn" data-action="task-pause" data-tooltip="Pause">${pauseIcon}</button>`;
+        if (!isFixed) taskBtns += `<button class="event-row-btn" data-action="task-pause" data-tooltip="Pause">${pauseIcon}</button>`;
         taskBtns += `<button class="event-row-btn danger" data-action="task-stop" data-tooltip="Stop">${stopIcon}</button>`;
-      } else if (st === "paused") {
+      } else if (st === "paused" && !isFixed) {
         taskBtns += `<button class="event-row-btn" data-action="task-resume" data-tooltip="Resume">${playIcon}</button>`;
         taskBtns += `<button class="event-row-btn danger" data-action="task-stop" data-tooltip="Stop">${stopIcon}</button>`;
-      } else if (st === "done") {
+      } else if (st === "done" && !isFixed) {
         taskBtns += `<button class="event-row-btn" data-action="task-restart" data-tooltip="Run again">${restartIcon}</button>`;
-      } else if (st === "stopped") {
+      } else if (st === "stopped" && !isFixed) {
         taskBtns += `<button class="event-row-btn" data-action="task-restart" data-tooltip="Restart">${restartIcon}</button>`;
       }
     }

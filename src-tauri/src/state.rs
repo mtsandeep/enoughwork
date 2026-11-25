@@ -53,6 +53,10 @@ pub struct ScheduledEvent {
     /// Task events: remaining seconds while paused.
     #[serde(default)]
     pub task_remaining_secs: Option<u64>,
+    /// Task events: when true, task is anchored to a fixed wall-clock window
+    /// (`trigger_at` -> `trigger_at + duration_secs`) instead of counting from click time.
+    #[serde(default)]
+    pub fixed_time: bool,
 }
 
 /// What interrupt UI was last active (break / reminder / limit), for next-day welcome.

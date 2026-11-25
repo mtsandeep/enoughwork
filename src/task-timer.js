@@ -120,10 +120,13 @@ function renderStrip(st) {
   // Buttons stay in place across state changes; inapplicable ones disable
   // (e.g. pause/stop/popout during the post-stop linger — no layout shift).
   const live = stState === "running" || stState === "paused";
-  $("#task-strip-toggle").disabled = !live;
+  const isFixed = !!display.fixed_time;
+  setHidden($("#task-strip-toggle"), isFixed);
+  setHidden($("#task-strip-restart"), isFixed);
+  $("#task-strip-toggle").disabled = !live || isFixed;
   $("#task-strip-stop").disabled = !live;
   $("#task-strip-popout").disabled = !live;
-  $("#task-strip-restart").disabled = !(live || stState === "stopped");
+  $("#task-strip-restart").disabled = isFixed || !(live || stState === "stopped");
   const paused = display.task_state === "paused";
   $("#task-strip-ic-pause").style.display = paused ? "none" : "";
   $("#task-strip-ic-play").style.display = paused ? "" : "none";
@@ -218,14 +221,17 @@ function renderPage(st) {
 
   // Controls stay in place across state changes; inapplicable ones disable.
   const paused = sel.task_state === "paused";
+  const isFixed = !!sel.fixed_time;
   const toggleBtn = $("#task-page-toggle");
+  setHidden(toggleBtn, isFixed);
+  setHidden($("#task-page-restart"), isFixed);
   $("#task-page-ic-pause").style.display = paused ? "none" : "";
   $("#task-page-ic-play").style.display = paused ? "" : "none";
   setText($("#task-page-toggle-label"), paused ? "Resume" : "Pause");
-  toggleBtn.disabled = !live;
+  toggleBtn.disabled = !live || isFixed;
   $("#task-page-stop").disabled = !live;
   // Restart works from any listed state (starts an armed task immediately).
-  $("#task-page-restart").disabled = false;
+  $("#task-page-restart").disabled = isFixed;
   // Pop Out works in every state — it just shows the frozen timer + Restart.
   $("#task-page-popout").disabled = false;
 
@@ -314,7 +320,7 @@ export async function openTaskPopout(id) {
   const now = nowSecs();
   const url =
     `src/windows/task-timer.html?id=${id}&title=${encodeURIComponent(ev.title || "Task")}` +
-    `&remaining=${taskRemainingSecs(ev, now)}&total=${ev.duration_secs || 0}&state=${ev.task_state}&t=${now}`;
+    `&remaining=${taskRemainingSecs(ev, now)}&total=${ev.duration_secs || 0}&state=${ev.task_state}&fixed=${ev.fixed_time ? 1 : 0}&t=${now}`;
   popoutTaskId = id;
   closeTaskPage();
   const savedPos = await readVisibleSavedPos();
@@ -405,6 +411,7 @@ function emitTaskTick(st) {
       state: pt.task_state,
       remaining: taskRemainingSecs(pt),
       total: pt.duration_secs || 0,
+      fixed: !!pt.fixed_time,
     });
   } else {
     closeTaskPopout();

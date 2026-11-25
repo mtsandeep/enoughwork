@@ -317,6 +317,7 @@ pub fn create_event(
     duration_secs: u64,
     overlay_type: String,
     recurring_days: Vec<u8>,
+    fixed_time: Option<bool>,
     app_handle: tauri::AppHandle,
 ) -> TimerState {
     use chrono::{Datelike, Timelike};
@@ -357,6 +358,7 @@ pub fn create_event(
     } else {
         duration_secs
     };
+    let is_fixed_task = event_type == "task" && fixed_time.unwrap_or(false);
     let mut new_ev = ScheduledEvent {
         id,
         event_type,
@@ -374,13 +376,23 @@ pub fn create_event(
         task_state: String::new(),
         task_ends_at: None,
         task_remaining_secs: None,
+        fixed_time: is_fixed_task,
     };
-    // A task scheduled for "now" starts its sub-timer immediately instead of
-    // firing a start notification.
+    // A task scheduled for "now" (or a fixed-time task whose start has passed)
+    // starts its sub-timer immediately instead of firing a start notification.
     if new_ev.event_type == "task" && !new_ev.triggered && effective_trigger_at <= chrono::Local::now().timestamp() {
         let now_ts = chrono::Local::now().timestamp();
-        new_ev.task_state = "running".into();
-        new_ev.task_ends_at = Some(now_ts + new_ev.duration_secs as i64);
+        let end_ts = if new_ev.fixed_time {
+            new_ev.trigger_at + new_ev.duration_secs as i64
+        } else {
+            now_ts + new_ev.duration_secs as i64
+        };
+        new_ev.task_state = if new_ev.fixed_time && now_ts >= end_ts {
+            "done".into()
+        } else {
+            "running".into()
+        };
+        new_ev.task_ends_at = Some(end_ts);
         new_ev.triggered = true;
         new_ev.recurred_today = true;
         // Anchor for the progress-bar range — without it the event would read
@@ -400,6 +412,7 @@ pub fn update_event(
     duration_secs: u64,
     overlay_type: String,
     recurring_days: Vec<u8>,
+    fixed_time: Option<bool>,
     app_handle: tauri::AppHandle,
 ) -> TimerState {
     use chrono::{Datelike, Timelike};
@@ -410,6 +423,7 @@ pub fn update_event(
         let is_task = event_type == "task";
         let prev_duration = ev.duration_secs;
         ev.event_type = event_type;
+        ev.fixed_time = is_task && fixed_time.unwrap_or(false);
         ev.title = title;
         ev.duration_secs = duration_secs;
         ev.overlay_type = overlay_type;
@@ -447,6 +461,18 @@ pub fn update_event(
             ev.task_state = String::new();
             ev.task_ends_at = None;
             ev.task_remaining_secs = None;
+        } else if ev.fixed_time {
+            let now_ts = chrono::Local::now().timestamp();
+            let end_ts = ev.trigger_at + duration_secs as i64;
+            if now_ts >= end_ts {
+                ev.task_state = "done".into();
+                ev.task_ends_at = Some(end_ts);
+                ev.task_remaining_secs = None;
+            } else {
+                ev.task_state = "running".into();
+                ev.task_ends_at = Some(end_ts);
+                ev.task_remaining_secs = None;
+            }
         } else if prev_duration != duration_secs {
             let now_ts = chrono::Local::now().timestamp();
             let remaining = if ev.task_state == "running" {
@@ -470,8 +496,17 @@ pub fn update_event(
             && effective_trigger_at <= chrono::Local::now().timestamp()
         {
             let now_ts = chrono::Local::now().timestamp();
-            ev.task_state = "running".into();
-            ev.task_ends_at = Some(now_ts + ev.duration_secs as i64);
+            let end_ts = if ev.fixed_time {
+                ev.trigger_at + ev.duration_secs as i64
+            } else {
+                now_ts + ev.duration_secs as i64
+            };
+            ev.task_state = if ev.fixed_time && now_ts >= end_ts {
+                "done".into()
+            } else {
+                "running".into()
+            };
+            ev.task_ends_at = Some(end_ts);
             ev.task_remaining_secs = None;
             ev.triggered = true;
             ev.recurred_today = true;
@@ -631,8 +666,17 @@ pub fn start_task(id: u32, show_main: Option<bool>, app_handle: tauri::AppHandle
             || ev.task_state == "scheduled"
             || ev.task_state == "notified";
         if ev.event_type == "task" && unstarted && ev.duration_secs > 0 {
-            ev.task_state = "running".into();
-            ev.task_ends_at = Some(now_ts + ev.duration_secs as i64);
+            let end_ts = if ev.fixed_time {
+                ev.trigger_at + ev.duration_secs as i64
+            } else {
+                now_ts + ev.duration_secs as i64
+            };
+            ev.task_state = if ev.fixed_time && now_ts >= end_ts {
+                "done".into()
+            } else {
+                "running".into()
+            };
+            ev.task_ends_at = Some(end_ts);
             ev.task_remaining_secs = None;
             ev.triggered = true;
             ev.recurred_today = true;
@@ -649,7 +693,7 @@ pub fn pause_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
     let mut state = app_data.state.lock().unwrap();
     let now_ts = chrono::Local::now().timestamp();
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
-        if ev.event_type == "task" && ev.task_state == "running" {
+        if ev.event_type == "task" && ev.task_state == "running" && !ev.fixed_time {
             let remaining = ev
                 .task_ends_at
                 .map(|end| (end - now_ts).max(0) as u64)
@@ -668,7 +712,7 @@ pub fn resume_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
     let mut state = app_data.state.lock().unwrap();
     let now_ts = chrono::Local::now().timestamp();
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
-        if ev.event_type == "task" && ev.task_state == "paused" {
+        if ev.event_type == "task" && ev.task_state == "paused" && !ev.fixed_time {
             let remaining = ev.task_remaining_secs.unwrap_or(0);
             ev.task_state = "running".into();
             ev.task_ends_at = Some(now_ts + remaining as i64);
@@ -686,7 +730,7 @@ pub fn restart_task(id: u32, app_handle: tauri::AppHandle) -> TimerState {
     let mut state = app_data.state.lock().unwrap();
     let now_ts = chrono::Local::now().timestamp();
     if let Some(ev) = state.events.iter_mut().find(|e| e.id == id) {
-        if ev.event_type == "task" && ev.duration_secs > 0 {
+        if ev.event_type == "task" && ev.duration_secs > 0 && !ev.fixed_time {
             ev.task_state = "running".into();
             ev.task_ends_at = Some(now_ts + ev.duration_secs as i64);
             ev.task_remaining_secs = None;

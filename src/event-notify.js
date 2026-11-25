@@ -33,10 +33,10 @@ if (kind === "task-start") {
   primaryAction = "task-start";
 } else if (kind === "task-done") {
   document.getElementById("event-label").textContent = "Task Done";
-  // "Done" is the primary (acknowledge); "Restart" runs the block again.
+  // "Done" is the primary (acknowledge); "Restart" runs the block again (hidden for fixed-time tasks).
   document.getElementById("btn-ok").textContent = "Done";
   document.getElementById("btn-dismiss").textContent = "Restart";
-  document.getElementById("btn-dismiss").hidden = false;
+  document.getElementById("btn-dismiss").hidden = params.get("fixed") === "1";
   primaryAction = "task-dismiss";
 }
 if (kind !== "reminder") {

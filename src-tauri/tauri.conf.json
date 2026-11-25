@@ -16,7 +16,7 @@
         "label": "main",
         "title": "EnoughWork",
         "width": 640,
-        "height": 560,
+        "height": 600,
         "minWidth": 480,
         "minHeight": 440,
         "resizable": true,

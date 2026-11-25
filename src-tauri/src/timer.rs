@@ -62,7 +62,7 @@ pub fn start_timer(app_handle: tauri::AppHandle) {
                     }
                 }
                 for ev in state.events.iter_mut() {
-                    if ev.event_type == "task" && ev.task_state == "running" {
+                    if ev.event_type == "task" && ev.task_state == "running" && !ev.fixed_time {
                         if let Some(end) = ev.task_ends_at.as_mut() {
                             *end += wall_delta;
                         }

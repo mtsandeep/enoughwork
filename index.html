@@ -250,7 +250,13 @@
       </div>
 
       <div class="event-field" id="event-duration-field" hidden>
-        <label class="event-field-label" id="event-duration-label">Break duration</label>
+        <div class="event-time-header">
+          <label class="event-field-label" id="event-duration-label">Break duration</label>
+          <div class="event-pill-row event-task-mode-toggle" id="event-task-mode-toggle" hidden>
+            <button type="button" class="event-pill-btn active" data-task-mode="duration">Duration</button>
+            <button type="button" class="event-pill-btn" data-task-mode="fixed">Fixed Time</button>
+          </div>
+        </div>
         <div class="event-quick-picks" id="event-break-picks">
           <button class="break-quick-btn" data-min="5">5m</button>
           <button class="break-quick-btn" data-min="10">10m</button>
@@ -295,9 +301,21 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
         </div>
+        <div class="event-fixed-range" id="event-fixed-range" hidden>
+          <div class="event-fixed-col">
+            <label class="event-fixed-sublabel" for="event-from-input">From</label>
+            <input type="time" class="event-input event-input-time" id="event-from-input" />
+          </div>
+          <span class="event-fixed-sep">→</span>
+          <div class="event-fixed-col">
+            <label class="event-fixed-sublabel" for="event-to-input">To</label>
+            <input type="time" class="event-input event-input-time" id="event-to-input" />
+          </div>
+        </div>
+        <div class="event-fixed-error" id="event-fixed-error" hidden>End time must be after start time</div>
       </div>
 
-      <div class="event-field">
+      <div class="event-field" id="event-when-field">
         <div class="event-time-header">
           <label class="event-field-label">When</label>
           <div class="event-time-actions">
