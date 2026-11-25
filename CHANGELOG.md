@@ -4,6 +4,8 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.13] - 2026-11-25
+
 ### Added
 - **Fixed Time** mode for tasks — toggle between **Duration** and **Fixed Time** in the task form to schedule a wall-clock **From → To** window (e.g. `11:00` to `13:00`). Starting the task at any point counts elapsed time from the scheduled start and ends at the exact **To** time (or marks it Done immediately if already past), does not shift across lock/sleep, and hides Pause and Restart controls everywhere
 - WebView-independent UI failure detection — if the main window fails to initialize within 10 seconds (for example when WebView2 Runtime is missing or damaged), the app logs diagnostics (`enoughwork.log` in the app data directory), updates the tray tooltip (`"EnoughWork — UI failed to load (click for details)"`), and shows a native Windows error dialog with recovery instructions instead of failing silently in the tray
