@@ -58,6 +58,7 @@ extern "system" {
     fn MonitorFromWindow(hwnd: HWND, dwflags: DWORD) -> HMONITOR;
     fn GetMonitorInfoW(hmonitor: HMONITOR, lpmi: *mut MonitorInfo) -> BOOL;
     fn IsWindowVisible(hwnd: HWND) -> BOOL;
+    fn MessageBoxW(hwnd: HWND, lp_text: *const u16, lp_caption: *const u16, u_type: u32) -> i32;
     fn EnumWindows(lpenumfunc: WNDENUMPROC, lparam: LPARAM) -> BOOL;
     fn GetWindowTextW(hwnd: HWND, lpstring: *mut u16, nmaxcount: i32) -> i32;
     fn GetWindowLongW(hwnd: HWND, nindex: i32) -> i32;
@@ -220,4 +221,21 @@ pub fn get_main_window_work_area(app_handle: &tauri::AppHandle) -> Option<Monito
         width: (mi.rc_work.right - mi.rc_work.left) as u32,
         height: (mi.rc_work.bottom - mi.rc_work.top) as u32,
     })
+}
+
+/// Show a native Win32 error dialog without depending on WebView2.
+pub fn show_error_dialog(title: &str, message: &str) {
+    const MB_OK: u32 = 0x00000000;
+    const MB_ICONERROR: u32 = 0x00000010;
+    const MB_SETFOREGROUND: u32 = 0x00010000;
+    let title_w: Vec<u16> = title.encode_utf16().chain(Some(0)).collect();
+    let msg_w: Vec<u16> = message.encode_utf16().chain(Some(0)).collect();
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            msg_w.as_ptr(),
+            title_w.as_ptr(),
+            MB_OK | MB_ICONERROR | MB_SETFOREGROUND,
+        );
+    }
 }

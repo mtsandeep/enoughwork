@@ -7,11 +7,22 @@
 use crate::persistence::{get_reset_time, load_settings};
 use crate::state::{
     effective_date, finalize_break, mark_event_missed, mark_missed_recurring_done,
-    reset_state_for_new_day, ActiveInterrupt, BreakSuggestion, ScheduledEvent, TimerState,
-    AppData,
+    reset_state_for_new_day, ActiveInterrupt, AppData, BreakSuggestion, ScheduledEvent,
+    TimerState, UiHealth,
 };
+use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
+
+#[tauri::command]
+pub fn ui_ready(app_handle: tauri::AppHandle, health: tauri::State<'_, UiHealth>) {
+    health.ready.store(true, Ordering::Relaxed);
+    if health.failed.swap(false, Ordering::Relaxed) {
+        if let Some(tray) = app_handle.tray_by_id("main-tray") {
+            let _ = tray.set_tooltip(Some("EnoughWork"));
+        }
+    }
+}
 
 #[tauri::command]
 pub fn get_state(app_handle: tauri::AppHandle) -> TimerState {

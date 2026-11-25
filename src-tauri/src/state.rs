@@ -1,7 +1,15 @@
 use chrono::{Datelike, Timelike};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use std::time::Instant;
+
+/// Tracks whether the webview frontend booted and whether a startup failure was flagged.
+#[derive(Default)]
+pub struct UiHealth {
+    pub ready: AtomicBool,
+    pub failed: AtomicBool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BreakSegment {

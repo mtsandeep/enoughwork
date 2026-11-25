@@ -4,6 +4,9 @@ All notable changes to EnoughWork will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- WebView-independent UI failure detection — if the main window fails to initialize within 10 seconds (for example when WebView2 Runtime is missing or damaged), the app logs diagnostics (`enoughwork.log` in the app data directory), updates the tray tooltip (`"EnoughWork — UI failed to load (click for details)"`), and shows a native Windows error dialog with recovery instructions instead of failing silently in the tray
+
 ## [0.2.12] - 2026-10-17
 
 ### Added

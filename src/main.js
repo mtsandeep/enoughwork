@@ -610,6 +610,7 @@ mainWindow.listen("tauri://focus", () => {
 
 // Initial load — script is at end of body, DOM is ready
 (async () => {
+  invoke("ui_ready").catch(() => {});
   await refreshState();
 
   // Crash/restart: pending_welcome only matters if an interrupt window survived
